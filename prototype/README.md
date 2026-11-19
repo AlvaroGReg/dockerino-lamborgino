@@ -1,18 +1,18 @@
-# Prototipo de integración ConPTY
+# ConPTY integration prototype
 
-Este spike valida la integración de WPF/.NET 10, EasyWindowsTerminalControl y Job Objects. No forma parte todavía del launcher ni debe ejecutarse desde uno de los repositorios del workspace de sitios.
+This spike validates the integration of WPF/.NET 10, EasyWindowsTerminalControl, and Job Objects. It is not yet part of the launcher and must not be run from one of the site workspace repositories.
 
-## Ejecutar
+## Run
 
-Desde esta carpeta:
+From this directory:
 
 ```powershell
 dotnet run --project .\TerminalSpike\TerminalSpike.csproj
 ```
 
-La aplicación abre `pwsh.exe -NoLogo -NoProfile -NoExit` integrado en EasyWindowsTerminalControl y asigna el proceso raíz a un Job Object exclusivo de la sesión. La barra de estado muestra el PID real y actualiza si el shell sigue activo o terminó (incluido el código de salida).
+The application opens `pwsh.exe -NoLogo -NoProfile -NoExit` inside EasyWindowsTerminalControl and assigns the root process to a session-exclusive Job Object. The status bar shows the actual PID and updates whether the shell is active or has exited, including its exit code.
 
-Para probar un comando real, abre una instancia por sesión y pasa su directorio:
+To test a real command, open one instance per session and pass its directory:
 
 ```powershell
 dotnet run --project .\TerminalSpike\TerminalSpike.csproj -- --command 'pwsh.exe -NoLogo -NoExit -Command "dotnet watch run --no-hot-reload"' --working-directory 'C:\ruta\al\backend' --title 'Backend'
@@ -20,56 +20,56 @@ dotnet run --project .\TerminalSpike\TerminalSpike.csproj -- --command 'pwsh.exe
 dotnet run --project .\TerminalSpike\TerminalSpike.csproj -- --command 'pwsh.exe -NoLogo -NoExit -Command "npm start"' --working-directory 'C:\ruta\al\backOffice' --title 'BackOffice'
 ```
 
-`--log-file <ruta>` guarda la salida ConPTY para diagnóstico. `--title <texto>` diferencia las ventanas durante un spike de varias sesiones.
+`--log-file <path>` saves ConPTY output for diagnostics. `--title <text>` distinguishes windows during a multi-session spike.
 
-### Reproducción pasiva del arranque
+### Passive startup reproduction
 
 ```powershell
 .\TerminalSpike\Test-TerminalStartup.ps1
 ```
 
-El script compila Debug, abre una ventana titulada `TerminalSpike-Fase1-startup` y comprueba el PID real, conexión, handoff, prompt en la salida ConPTY y vida durante tres segundos. No inyecta teclas. Deja la ventana abierta para aceptar manualmente el teclado físico; indica un comando que crea un archivo marcador único, independiente del eco del comando. El log único queda en `%TEMP%` y contiene salida ConPTY y eventos de proceso. La salida registrada no prueba por sí sola el renderizado. Para aislar cmd: `-Command 'cmd.exe /K' -PromptPattern '[A-Za-z]:\\[^\r\n]*>' -WindowTitle 'TerminalSpike-Fase1-cmd'`. Usa `-NoBuild` si ya está compilado y hay otra ventana abierta: Windows bloquea la sustitución del ejecutable en uso.
+The script builds Debug, opens a window titled `TerminalSpike-Fase1-startup`, and checks the actual PID, connection, handoff, prompt in ConPTY output, and process survival for three seconds. It does not inject keystrokes. It leaves the window open for physical keyboard acceptance and provides a command that creates a unique marker file, independent of command echo. The unique log remains in `%TEMP%` and contains ConPTY output and process events. Logged output alone does not prove rendering. To isolate cmd: `-Command 'cmd.exe /K' -PromptPattern '[A-Za-z]:\\[^\r\n]*>' -WindowTitle 'TerminalSpike-Fase1-cmd'`. Use `-NoBuild` if already built and another window is open: Windows locks the running executable against replacement.
 
-La ventana puede quedar en primer plano al abrirse, como cualquier aplicación WPF normal. El script no intenta modificar foco, tamaño ni posición de otras ventanas.
+The window may come to the foreground when opened, like any normal WPF application. The script does not attempt to change the focus, size, or position of other windows.
 
-## Diseño probado por compilación
+## Design verified by compilation
 
-- Se desconecta el `TermPTY` interno del control para evitar que inicie un shell propio. Tras `TermReady`, se conecta el `TermPTY` de la sesión a `EasyTerminalControl`; la salida leída antes de ese handoff se almacena y se reproduce.
-- `JobObjectProcessFactory` usa la interfaz `IProcessFactory` pública del paquete y expone internamente PID/código de salida para diagnóstico.
-- Crea el proceso con `CREATE_SUSPENDED`, asigna el proceso al Job Object y solo entonces llama a `ResumeThread`. No acepta ni expone PIDs en la UI.
-- El Job Object se configura con `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`; el botón de parada termina únicamente ese Job Object.
-- El atributo de ConPTY se conserva en la lista de atributos de creación requerida por Windows. La factoría upstream llama a `CreateProcess` con `bInheritHandles: false`; la factoría local debe compararse con ese comportamiento al diagnosticar el arranque.
-- Versión fijada: `EasyWindowsTerminalControl 1.0.38`, con `net10.0-windows` disponible en el paquete.
+- The control's internal `TermPTY` is disconnected to prevent it from starting its own shell. After `TermReady`, the session's `TermPTY` is connected to `EasyTerminalControl`; output read before that handoff is buffered and replayed.
+- `JobObjectProcessFactory` uses the package's public `IProcessFactory` interface and internally exposes PID/exit code for diagnostics.
+- It creates the process with `CREATE_SUSPENDED`, assigns it to the Job Object, and only then calls `ResumeThread`. It does not accept or expose PIDs in the UI.
+- The Job Object is configured with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`; the stop button terminates only that Job Object.
+- The ConPTY attribute is retained in the process creation attribute list required by Windows. The upstream factory calls `CreateProcess` with `bInheritHandles: false`; the local factory should be compared with that behavior when diagnosing startup.
+- Pinned version: `EasyWindowsTerminalControl 1.0.38`, with `net10.0-windows` available in the package.
 
-## Resultados de la Fase 1
+## Phase 1 results
 
-- **Build:** Debug y Release compilan en Windows con .NET SDK 10.0.404, sin errores ni advertencias. El análisis NuGet anterior no detectó paquetes vulnerables en el spike. No se cambiaron dependencias.
-- **ConPTY/control:** el paquete 1.0.38 implementa `TermPTY` como backend ConPTY y conecta el `TerminalControl` al establecer `EasyTerminalControl.ConPTYTerm`; este último está hospedado como HWND. El README upstream confirma el flujo de salida/entrada y la limitación de airspace. Una salida recibida por `WriteToTerm` prueba la ruta API→ConPTY→log, no la captura física del HWND. El `AutoResize` del control conecta el cambio de tamaño del terminal con `TermPTY.Resize`, pero todavía falta la verificación visual de la aceptación de este spike.
-- **Job Object:** la fábrica crea el shell suspendido, lo asigna al Job Object y después lo reanuda. La prueba inició un PowerShell descendiente; detener la sesión terminó ambos procesos y dejó vivo un proceso PowerShell ajeno. Cerrar la app también terminó la sesión.
-- **Rutas:** se comprobó una ruta temporal con espacios y la ruta real `EmbutidosEzequiel\Ezequiel`, encontrando `Ezequiel.csproj` sin inferir el nombre de la carpeta desde el repo.
-- **Comandos reales:** en sesiones separadas de ArvaHoteles, `dotnet watch run --no-hot-reload` inició el backend y atendió una petición local; `npm start` del frontend compiló correctamente con webpack en 36,4 s; `npm start` de backOffice ejecutó `prestart`/`combine`, compiló Angular y escuchó en `localhost:4200`. Se cerraron las tres sesiones y los puertos dejaron de escuchar.
-- **Docker:** con un proyecto Compose de nombre aislado se inició Alpine en `up -d`. Cerrar la sesión de terminal dejó el contenedor ejecutándose; `docker compose stop` lo dejó detenido y `docker compose down` eliminó solo el contenedor y la red de prueba. No se usaron volúmenes ni se tocaron contenedores ajenos. Docker Desktop queda ejecutándose y la imagen `alpine:3.21` permanece en caché.
-- **Limpieza de pruebas:** se restauraron los 93 archivos preexistentes de `wwwroot/dist`, los JSON versionados de backOffice y su caché Angular. El repositorio ArvaHoteles volvió a quedar limpio.
+- **Build:** Debug and Release build on Windows with .NET SDK 10.0.404, without errors or warnings. The earlier NuGet analysis detected no vulnerable packages in the spike. Dependencies were not changed.
+- **ConPTY/control:** package 1.0.38 implements `TermPTY` as the ConPTY backend and connects `TerminalControl` when `EasyTerminalControl.ConPTYTerm` is set; the latter is hosted as an HWND. The upstream README confirms the output/input flow and the airspace limitation. Output received by `WriteToTerm` proves the API→ConPTY→log path, not physical input capture by the HWND. The control's `AutoResize` connects terminal size changes to `TermPTY.Resize`; subsequent visual acceptance is documented below.
+- **Job Object:** the factory creates the shell suspended, assigns it to the Job Object, and then resumes it. The test started a descendant PowerShell process; stopping the session terminated both processes and left an unrelated PowerShell process alive. Closing the app also terminated the session.
+- **Paths:** a temporary path containing spaces and the actual `EmbutidosEzequiel\Ezequiel` path were checked, finding `Ezequiel.csproj` without inferring the directory name from the repository.
+- **Real commands:** in separate ArvaHoteles sessions, `dotnet watch run --no-hot-reload` started the backend and served a local request; frontend `npm start` compiled successfully with webpack in 36.4 seconds; backOffice `npm start` ran `prestart`/`combine`, compiled Angular, and listened on `localhost:4200`. All three sessions were closed and the ports stopped listening.
+- **Docker:** an Alpine container was started with `up -d` in an isolated Compose project. Closing the terminal session left the container running; `docker compose stop` stopped it, and `docker compose down` removed only the test container and network. No volumes were used and unrelated containers were untouched. Docker Desktop remains running and the `alpine:3.21` image remains cached.
+- **Test cleanup:** the 93 pre-existing `wwwroot/dist` files, versioned backOffice JSON files, and Angular cache were restored. The ArvaHoteles repository was clean again.
 
-### Aceptación manual completada
+### Manual acceptance completed
 
-La prueba física inicial quedó bloqueada: se mostró “Sesión asignada a un Job Object” aunque ese estado no probaba vida del proceso. La búsqueda inicial de `pwsh.exe` no permitía concluir el estado de la configuración anterior, que usaba `powershell.exe`. El registro inicial carecía de PID/código de salida y no observaba errores posteriores a `TermReady`.
+The initial physical test was blocked: “Sesión asignada a un Job Object” was displayed even though that status did not prove the process was alive. The initial search for `pwsh.exe` did not establish the state of the previous configuration, which used `powershell.exe`. The initial log had no PID/exit code and did not observe errors after `TermReady`.
 
-**Causa aislada y corrección:** bajo el lanzador con `UseShellExecute=false`, el prompt aparecía en la salida de la consola del padre y no en ConPTY; `pwsh` terminaba con código 0. Cambiar únicamente `STARTUPINFO` para usar `STARTF_USESTDHANDLES` con los tres handles nulos hizo que Windows proveyera los handles de la pseudoconsola: en el mismo escenario el prompt aparece en ConPTY y `pwsh` permanece vivo. Sin ese cambio la regresión fallaba; con él pasa. Esto identifica el acoplamiento a los handles estándar del anfitrión en el escenario reproducido, no demuestra que toda posible pantalla negra tenga esa causa. Cambiar solo `bInheritHandles` no lo arregló. Se conserva la asignación suspendida al Job y la versión 1.0.38 sin cambios.
+**Isolated cause and fix:** under the launcher with `UseShellExecute=false`, the prompt appeared in the parent console output rather than ConPTY; `pwsh` exited with code 0. Changing only `STARTUPINFO` to use `STARTF_USESTDHANDLES` with all three handles null caused Windows to supply the pseudoconsole handles: in the same scenario, the prompt appears in ConPTY and `pwsh` remains alive. Without the change the regression failed; with it, the test passes. This identifies coupling to host standard handles in the reproduced scenario, not a cause for every possible black screen. Changing only `bInheritHandles` did not fix it. Suspended assignment to the Job and version 1.0.38 remain unchanged.
 
-**Evidencia 19-11-2026:** Debug y Release compilan sin advertencias; `pwsh.exe -NoLogo -NoProfile -NoExit` y `cmd.exe /K` superaron la prueba pasiva de prompt y vida durante tres segundos. `cmd.exe /c exit 23` registró PID y `PROCESS_EXITED ... exitCode=23`. Una compilación intermedia falló porque nuestra propia ventana experimental mantenía bloqueado el ejecutable; tras cerrarla ambas compilaciones pasaron. Se eliminó la duplicación del log y se serializó la reproducción del buffer anterior a la conexión. El estado distingue proceso vivo/salido y conserva el código tras liberar handles; errores de arranque/lector se registran. `TermReady` sigue indicando únicamente que backend y escritor están preparados, no aceptación.
+**Evidence, 2026-11-19:** Debug and Release build without warnings; `pwsh.exe -NoLogo -NoProfile -NoExit` and `cmd.exe /K` passed the passive prompt and three-second survival test. `cmd.exe /c exit 23` logged the PID and `PROCESS_EXITED ... exitCode=23`. An intermediate build failed because our own experimental window held the executable locked; after closing it, both builds passed. Duplicate logging was removed and replay of the buffer before connection was serialized. State distinguishes a live process from an exited process and retains the exit code after handles are released; startup/reader errors are logged. `TermReady` still indicates only that the backend and writer are ready, not acceptance.
 
-La prueba pasiva automatizada **no sustituye** los criterios de aceptación humana. El 19-11-2026 el usuario confirmó renderizado, teclado físico y redimensionado con ajuste de líneas, acompañados de capturas de `TerminalSpike-Fase1-ACEPTACION` y el PID 24436 activo. Escribió y ejecutó `Set-Content` en la terminal; se verificó que `%TEMP%\TerminalSpike-physical-24436.txt` contenía exactamente `TERMINALSPIKE_PHYSICAL_KEYBOARD_MARKER`. La segunda captura muestra el comando y el prompt tras estrechar la ventana. La prueba anterior de eventos simulados no se usa como aceptación física. Con estas evidencias y las pruebas anteriores se aprueba el bloqueo de Fase 1; no se ha comenzado la UI completa.
+The automated passive test **does not replace** human acceptance criteria. On 2026-11-19 the user confirmed rendering, physical keyboard input, and resizing with line adjustment, accompanied by screenshots of `TerminalSpike-Fase1-ACEPTACION` and active PID 24436. The user typed and ran `Set-Content` in the terminal; `%TEMP%\TerminalSpike-physical-24436.txt` was verified to contain exactly `TERMINALSPIKE_PHYSICAL_KEYBOARD_MARKER`. The second screenshot shows the command and prompt after narrowing the window. The earlier simulated-event test is not used as physical acceptance. With this evidence and the earlier tests, the Phase 1 blocker is considered resolved; the full UI has not been started.
 
-### Advertencias observadas, no causadas por el spike
+### Observed warnings not caused by the spike
 
-- El backend muestra avisos NU1902/NU1903 por `System.Security.Cryptography.Pkcs 10.0.12`; no se actualizaron dependencias del sitio.
-- Ejecutar los tres arranques a la vez produjo avisos transitorios de `dotnet watch` (“Too many changes at once”) mientras los frontends generaban archivos. El servidor backend llegó a iniciar y responder.
-- Angular informó estilos Material duplicados, pero completó la compilación.
+- The backend shows NU1902/NU1903 warnings for `System.Security.Cryptography.Pkcs 10.0.12`; site dependencies were not updated.
+- Starting all three processes at once produced transient `dotnet watch` warnings (“Too many changes at once”) while the frontends generated files. The backend server did start and respond.
+- Angular reported duplicate Material styles, but completed compilation.
 
-## Dependencias y licencia
+## Dependencies and license
 
-- `EasyWindowsTerminalControl 1.0.38` declara MIT.
-- Dependencias directas transitivas fijadas por ese paquete: `CI.Microsoft.Terminal.Wpf 1.25.260303002` y `Microsoft.Windows.Console.ConPTY 1.24.260710001`.
-- El README upstream advierte que el backend WPF depende de paquetes/APIs beta y documenta la limitación de *airspace* del HWND hospedado.
-- Antes de distribuir el launcher, revisar avisos/licencias de todo el grafo NuGet y preservar sus avisos aplicables.
+- `EasyWindowsTerminalControl 1.0.38` declares MIT.
+- Direct dependencies pinned by that package: `CI.Microsoft.Terminal.Wpf 1.25.260303002` and `Microsoft.Windows.Console.ConPTY 1.24.260710001`.
+- The upstream README warns that the WPF backend depends on beta packages/APIs and documents the hosted HWND's airspace limitation.
+- Before distributing the launcher, review notices/licenses throughout the NuGet dependency graph and preserve applicable notices.

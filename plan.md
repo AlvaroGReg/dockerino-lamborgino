@@ -1,99 +1,103 @@
-# Plan de desarrollo: lanzador local de proyectos
+# Development plan: local project launcher
 
-Este plan convierte las decisiones de [decisiones.md](decisiones.md) en etapas implementables. El estado del spike de Fase 1 se registra en [prototype/README.md](prototype/README.md).
+This plan turns the decisions in [decisiones.md](decisiones.md) into implementable stages. The status of the Phase 1 spike is recorded in [prototype/README.md](prototype/README.md).
 
-## Fase 0: cerrar decisiones de producto
+## Phase 0: finalize product decisions
 
-Las decisiones de plataforma, rutas, interfaz de terminales, botones y ramas ya están tomadas y se detallan en [README.md](README.md) y [decisiones.md](decisiones.md). Antes de cerrar esta fase:
+The initial platform, path, terminal interface, button, and branch decisions are detailed in [README.md](README.md) and [decisiones.md](decisiones.md).
 
-- Aceptación manual de Fase 1 completada (prompt, teclado físico con marcador y resize visual), además de compilación y comprobación pasiva; conservar las evidencias y límites del spike antes de construir la UI.
-- Elegir distribución: ejecutable autocontenido o requisito de tener instalado .NET 10. (Decidido: requisito .net 10)
+- Phase 1 manual acceptance is complete (prompt, physical keyboard with marker, and visual resize), in addition to build and passive checks. Preserve the evidence and limitations before building the UI.
+- Distribution decision: require .NET 10 to be installed rather than shipping a self-contained executable.
 
-## Fase 1: prototipo de integración
+## Phase 1: integration prototype
 
-**Estado: bloqueo de Fase 1 resuelto y criterios de aceptación del spike aprobados el 19-11-2026.** Se aisló en el escenario reproducido el desvío de handles estándar del anfitrión: con `STARTF_USESTDHANDLES` y handles nulos el prompt llega a ConPTY y el shell permanece vivo. La regresión falló antes y pasó después; `pwsh` y `cmd` superaron la comprobación pasiva, y se observó salida 23 de un proceso de prueba. Debug/Release compilan. PID, estado, errores y salida se registran sin tratar `TermReady` como aceptación. El usuario confirmó prompt, teclado físico y redimensionado visual; se verificó el archivo marcador creado desde la terminal. Ver evidencias y límites en [prototype/README.md](prototype/README.md). No se ha iniciado la UI completa.
+**Status: the Phase 1 blocker was resolved and the spike acceptance criteria were approved on 2026-11-19.** The reproduced issue was isolated to the host's standard handles: with `STARTF_USESTDHANDLES` and null handles, the prompt reaches ConPTY and the shell remains alive. The regression failed before and passed after the fix; `pwsh` and `cmd` passed passive checks, and a test process's exit code 23 was observed. Debug and Release build successfully. PID, state, errors, and output are logged without treating `TermReady` as acceptance. The user confirmed the prompt, physical keyboard, and visual resize; the marker file created from the terminal was verified. See [prototype/README.md](prototype/README.md) for evidence and limitations. The full UI has not been started.
 
-Crear un prototipo mínimo con **EasyWindowsTerminalControl** detrás de una interfaz/adaptador propio que pueda:
+Create a minimal prototype with **EasyWindowsTerminalControl** behind a project-owned interface/adapter that can:
 
-- iniciar PowerShell/pwsh y comandos de prueba en ConPTY;
-- renderizar ANSI/VT, recibir teclado, mantener encoding y manejar resize;
-- asignar el proceso raíz a un Job Object y comprobar que detener la sesión termina solo sus descendientes;
-- comprobar si la factoría de procesos/extensión del control permite asignar el proceso a un Job Object antes de reanudarlo; si no, crear un fork mínimo para integrar este ciclo de vida;
-- arrancar un contenedor Docker de prueba desde la terminal y probar por separado la salida/interrupción del cliente y la parada del contenedor;
-- validar rutas de `app`, `backOffice` y el `.csproj` principal, y ejecutar los tres comandos reales del workspace en sesiones separadas.
+- Start PowerShell/pwsh and test commands in ConPTY.
+- Render ANSI/VT, receive keyboard input, maintain encoding, and handle resize.
+- Assign the root process to a Job Object and verify that stopping a session terminates only its descendants.
+- Check whether the control's process factory/extension allows assignment to a Job Object before resuming the process; otherwise, create a minimal fork to integrate this lifecycle.
+- Start a test Docker container from the terminal and separately test client exit/interruption and container stop.
+- In the historical WEBS-CMS test case, validate `app`, `backOffice`, and main `.csproj` paths, and run the three real workspace commands in separate sessions. These are test inputs, not launcher requirements.
 
-Probar rutas con espacios y estructuras distintas, incluida EmbutidosEzequiel cuyo directorio de aplicación es `Ezequiel`.
+Test paths containing spaces and different structures, including EmbutidosEzequiel, whose application directory is `Ezequiel`.
 
-Verificar licencia, versiones y dependencias del control seleccionado. Mantener alternativas documentadas en [README.md](README.md), pero no retrasar el prototipo por una comparación exhaustiva. Distinguir entre terminar el proceso `docker compose` y detener/eliminar sus contenedores. Para Docker Compose usar un proyecto de prueba con nombre aislado; nunca terminar el daemon de Docker ni ejecutar una parada global de contenedores.
+Verify the selected control's license, versions, and dependencies. Keep alternatives documented in [README.md](README.md), but do not delay the prototype for an exhaustive comparison. Distinguish terminating the `docker compose` process from stopping or removing its containers. Use an isolated test project name for Docker Compose; never terminate the Docker daemon or stop containers globally.
 
-**Salida:** decisión sobre el control ConPTY reutilizable y evidencia de interacción terminal completa, aislamiento de procesos y ciclo de vida Docker acotado. No avanzar a la UI completa si un requisito esencial falla.
+**Output:** a decision on the reusable ConPTY control and evidence of complete terminal interaction, process isolation, and a scoped Docker lifecycle. Do not proceed to the full UI if an essential requirement fails.
 
-## Fase 2: esqueleto WPF
+## Phase 2: WPF skeleton
 
-- Crear una aplicación WPF .NET 10 independiente en una carpeta propia del workspace (no dentro de un sitio).
-- Implementar una ventana compacta sin marco, always-on-top, que se pueda plegar y desplegar.
-- Añadir menú flotante de proyectos, rama actual, comandos y sesiones de terminal.
-- Integrar vistas de terminal interactivas y permitir abrir/reseleccionar sesiones desde el menú.
-- Mantener vivas las sesiones al plegar/cerrar el menú y definir el comportamiento al cerrar la aplicación.
-- Crear una capa de dominio/backend para sesiones y proyectos que pueda compartirse posteriormente con UI y CLI para IA.
+- Create an independent .NET 10 WPF application in its own workspace directory, not inside a site.
+- Implement a compact, borderless, always-on-top window that can collapse and expand.
+- Add a floating menu for projects, current branch, commands, and terminal sessions.
+- Integrate interactive terminal views and allow sessions to be opened or reselected from the menu.
+- Keep sessions alive when the menu is collapsed or closed, and define behavior when the application closes.
+- Create a domain/backend layer for sessions and projects that can later be shared by the UI and an AI-facing CLI.
 
-## Fase 3: descubrimiento de proyectos
+## Phase 3: user-initiated project search and configuration
 
-- Permitir configurar la ruta base del workspace por proyecto; sugerir inicialmente `../../00-WEBS-CMS` respecto a la carpeta de documentación.
-- Enumerar solo sus directorios hijos inmediatos.
-- Validar cada candidato comprobando Git, `app/package.json`, `backOffice/package.json` y un `.csproj` principal.
-- Excluir explícitamente directorios ocultos/de paquetes y proyectos que no cumplan la estructura.
-- Guardar para cada proyecto las rutas encontradas, no nombres de rutas supuestos.
-- Mostrar errores de descubrimiento sin impedir el uso de los demás proyectos válidos.
+- Start with an empty list of saved projects; do not scan locations automatically.
+- Provide a **Find projects** button and let the user select either a project directory or a parent containing projects.
+- Analyze only the chosen location and, for a parent directory, its immediate children. Exclude hidden and package directories from candidates.
+- Present candidates and allow the user to choose which projects to configure.
+- Analyze candidates for recognizable project information and propose applicable commands where identifiable, without requiring a particular stack or project layout.
+- Generate a configuration per selected project with its name, project path, actual working directories, and identifiable startup commands. Allow users to configure multiple named launch types, choose each action's color, and edit process counts, commands, working directories, ordering, and success dependencies. Allow review and editing before saving, persist it, and allow later edits.
+- Report missing or ambiguous paths and commands for user resolution; do not silently invent values or execute commands during search or saving.
+- Allow manual configuration for unrecognized structures; never generate unsupported commands.
+- Enable Git branch operations only for valid Git repositories, and offer only actions present in the saved configuration.
+- Show search and validation errors without preventing use of other valid projects.
 
-## Fase 4: selector de ramas
+## Phase 4: branch selector
 
-- Consultar rama actual, ramas locales y remotas y estado de cambios.
-- Mostrar ramas locales y remotas en grupos visualmente diferenciados, con iconos distintos y una barra separadora (referencia visual: extensión GitHub de VS Code).
-- Permitir cambiar a una rama local usando `git switch`.
-- No usar stash/reset ni sincronizar con remoto automáticamente.
-- Tratar la selección de una rama remota como acción explícita para crear/cambiar a una rama local de seguimiento; no cambiar a remoto de forma implícita.
-- Refrescar la UI tras el cambio y presentar errores de Git.
+- Query the current branch, local and remote branches, and working-tree status.
+- Show local and remote branches in visually distinct groups, with distinct icons and a separator (visual reference: the GitHub extension in VS Code).
+- Allow switching to a local branch using `git switch`.
+- Do not automatically stash/reset or synchronize with a remote.
+- Treat selecting a remote branch as an explicit action to create or switch to a local tracking branch; do not implicitly check out a remote branch.
+- Refresh the UI after switching and display Git errors.
 
-## Fase 5: arranque y actualización
+## Phase 5: configurable launches
 
-- Implementar arranque normal en terminales interactivas integradas mediante ConPTY.
-- Presentar dos acciones inequívocas: botón verde para arranque normal y botón naranja para `update-core:latest` y arranque.
-- Crear una terminal interactiva por proceso para backend, frontend y backoffice.
-- Implementar actualización core en la sesión frontend y condicionar `npm start` a un código de salida cero.
-- Permitir que backend y backoffice arranquen en paralelo mientras se actualiza el core.
-- En código distinto de cero: conservar salida visible y no arrancar el frontend.
-- No pedir confirmación para `update-core:latest`; comunicar su propósito/efectos junto al botón naranja.
-- Mostrar progreso/estado, evitar clics duplicados durante la operación y conservar salida útil para diagnóstico.
-- Validar disponibilidad de `dotnet`, `npm`, shell y componentes de terminal requeridos; indicar cuál falta.
+- Run saved launch configurations in integrated interactive ConPTY terminals.
+- Present user-configured, named launch actions with their chosen colors. Support multiple launch types without providing two fixed default actions or assigning fixed meanings to colors.
+- Support configurable numbers of processes and sessions, independent parallel sessions, and sequential steps within a session.
+- Support steps conditional on a previous step's successful exit; on failure, keep output visible, skip dependent steps, and allow independent sessions to continue.
+- Run only the selected action's configured commands. Make configured descriptions and known effects visible regardless of color.
+- Show progress/status, prevent duplicate clicks during the operation, and retain useful diagnostic output.
+- Validate the selected configuration's working directories, commands, required tools, shell, and terminal components; identify missing components without assuming specific tools are needed by every project.
 
-## Fase 6: endurecimiento y entrega
+## Phase 6: hardening and delivery
 
-- Probar paths con espacios, rutas inválidas, proyecto incompleto y fallos de creación/redimensionado/interacción de terminal.
-- Probar Docker con daemon disponible/no disponible, compose adjunto y detached, interrupción del cliente, parada del proyecto de prueba y preservación de volúmenes.
-- Probar cambio de rama con árbol limpio y su rechazo/advertencia con cambios locales.
-- Probar el fallo y éxito de `update-core:latest`.
-- Verificar que el arranque normal no ejecuta actualizaciones.
-- Documentar instalación, ejecución y configuración de ruta del workspace.
-- Decidir distribución (ejecutable autocontenido o instalación con runtime .NET).
-- Verificar que Job Objects y el registro de sesiones permiten detener solo los procesos descendientes de la sesión solicitada; no aceptar PID arbitrarios desde UI ni CLI.
+- Test paths with spaces, invalid paths, incomplete projects, and terminal creation/resize/interaction failures.
+- Test Docker with the daemon available and unavailable, attached and detached Compose, client interruption, stopping the test project, and volume preservation.
+- Test branch switching with a clean tree and rejection/warnings with local changes.
+- Test configurations with different structures and process counts, parallel sessions, sequential steps, and successful and failed prerequisites. Verify that unconfigured commands never run.
+- Use the [WEBS-CMS example](examples/webs-cms.md) as a real test case, including success and failure of its optional update sequence; assess its effects before executing the update.
+- Test creating, editing, saving, and launching multiple action types with different selected colors; verify labels distinguish actions independently of color.
+- Document installation, execution, user-initiated project search, and launch configuration.
+- Verify the chosen distribution requirement (.NET 10 installed).
+- Verify that Job Objects and the session registry stop only descendants of the requested session; do not accept arbitrary PIDs from the UI or CLI.
 
-## Criterios de aceptación del MVP
+## MVP acceptance criteria
 
-1. La app lista los 11 proyectos actuales bajo la ruta configurada y no lista carpetas auxiliares ni paquetes comunes.
-2. Las rutas detectadas funcionan aunque el directorio interno difiera del nombre del repo.
-3. Al seleccionar un proyecto, se muestra su rama actual.
-4. Se puede cambiar a una rama local sin que la app descarte cambios locales.
-5. El arranque normal abre tres terminales propias, interactivas y asociadas a sesiones aisladas, con comandos y directorios correctos.
-6. El arranque normal nunca ejecuta `update-core:latest`.
-7. El arranque con actualización inicia backend y backoffice y, en la terminal frontend, ejecuta el script antes de `npm start`; si el script falla, solo se omite el arranque del frontend.
-8. El usuario recibe un mensaje accionable si faltan comandos, rutas o componentes de terminal.
-9. Las sesiones de terminal permanecen accesibles al plegar el menú; se puede interactuar con ellas desde la aplicación y detenerlas individualmente sin afectar procesos ajenos.
-10. El botón naranja explica que la actualización puede modificar/reinstalar dependencias; no requiere confirmación.
-11. Las ramas locales y remotas aparecen diferenciadas; seleccionar una remota requiere una acción explícita de creación local.
+1. The app starts with no automatically discovered projects; the user can search a chosen location, select candidates, and save their configurations without including auxiliary directories or common packages.
+2. Generated paths work even when the inner directory differs from the repository name; users can review and edit paths and commands, and saved configurations persist for later use. Search and saving do not execute commands.
+3. Selecting a Git-backed project shows its current branch; projects without Git remain usable without branch operations.
+4. A local branch can be selected without the app discarding local changes.
+5. A launch opens the configured number of integrated, interactive terminals associated with isolated sessions, using its saved commands and directories.
+6. Each launch action runs only its configured commands; commands absent from that action never run implicitly.
+7. Configured independent sessions can run in parallel; sequential steps execute in order, and a failed prerequisite prevents success-dependent steps without stopping independent sessions.
+8. The user receives an actionable message when commands, paths, or terminal components are missing.
+9. Terminal sessions remain accessible when the menu is collapsed; users can interact with them in the application and stop them individually without affecting unrelated processes.
+10. Users can configure multiple named launch types and select from several colors for each; names distinguish actions independently of color. Known effects can be explained for the relevant action.
+11. Local and remote branches are distinguished; selecting a remote requires an explicit local-branch creation action.
 
-## Pendientes para la implementación
+The [WEBS-CMS example](examples/webs-cms.md) is one acceptance test fixture, including its 11 observed repositories and optional three-session update workflow. It does not limit the projects, commands, or number of sessions supported by the MVP.
 
-- ¿La distribución será un ejecutable autocontenido o asumirá .NET 10 instalado?
-- ¿Qué control ConPTY se usará y qué licencias/dependencias introduce?
-- ¿Cuál será el comportamiento de sesiones al cerrar/reabrir la aplicación propia (persistir, reconectar o terminar)?
+## Implementation questions
+
+- What happens to sessions when the application closes and reopens: persist, reconnect, or terminate?
+- Review the selected ConPTY control's full dependency and license graph before distribution.

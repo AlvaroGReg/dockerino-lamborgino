@@ -1,170 +1,152 @@
-# Análisis y decisiones: lanzador de proyectos
+# Analysis and decisions: project launcher
 
-## 1. Contexto y necesidad
+## 1. Context and need
 
-El workspace contiene varios sitios ASP.NET Core, cada uno con un frontend Vue en `app` y un backoffice Angular en `backOffice`. Para trabajar en un proyecto hay que abrir sus tres procesos y, en ocasiones, actualizar primero los paquetes core del frontend.
+Developers work with local projects whose commands, directories, process counts, and startup sequences vary. They need to save launch configurations and run them in interactive terminals. The [WEBS-CMS example](examples/webs-cms.md) is a real target and test case, not a required product structure.
 
-La experiencia deseada es:
+The desired experience is:
 
-1. Una burbuja flotante en pantalla despliega la lista de proyectos.
-2. Se selecciona un proyecto y se muestra su rama actual, el selector de rama y dos acciones de arranque.
-3. Una acción arranca backend, frontend y backoffice.
-4. La otra actualiza primero el core del frontend y, si todo va bien, arranca los tres procesos.
-5. Los procesos aparecen como sesiones de terminal integradas e interactivas, accesibles desde el menú flotante.
+1. A floating bubble on screen opens the project list.
+2. The user can search for projects, choose their location, and save a generated launch configuration. The list contains saved projects rather than automatically discovered projects.
+3. The user selects a saved project and sees its current branch, branch selector, and applicable startup actions.
+4. The user selects a named launch action, which runs its configured processes and sequence.
+5. Processes appear as integrated interactive terminal sessions accessible from the floating menu.
 
-El alcance aquí es local y de desarrollo. No se propone desplegar, hacer `pull`, instalar dependencias automáticamente al arranque normal, ni cambiar archivos de solución.
+The scope is local development. The launcher does not independently deploy, `pull`, install dependencies, or change solution files; explicitly configured commands may have their own effects.
 
-## 2. Viabilidad
+## 2. Feasibility
 
-**Viabilidad: alta, con una dependencia operativa clara.**
+**Feasibility: high, with a clear operational dependency.**
 
-- **Inventario:** hay 11 repositorios en la raíz del workspace y los 11 tienen `app/package.json` y `backOffice/package.json`.
-- **Backend:** los proyectos web principales observados usan `net10.0`, por lo que `dotnet watch run --no-hot-reload` es coherente con el entorno actual.
-- **Frontend y backoffice:** ambos declaran `npm start`. En backoffice, npm ejecutará además el hook `prestart` (`npm run combine`).
-- **Ramas:** Git permite consultar ramas y cambiar la rama del repositorio seleccionado sin salir del launcher.
-- **Terminal integrada:** ConPTY permite conectar shells y procesos a pseudo-consolas que la aplicación puede alojar. Job Objects son la opción que se investigará para agrupar y detener los procesos hijos de cada sesión.
-- **UI flotante:** WPF permite una ventana sin marco, siempre visible y pequeña que puede expandirse desde un control tipo flecha.
+- **Representative workspace:** the [WEBS-CMS example](examples/webs-cms.md) provides real repositories, commands, and differing internal paths for testing, without defining requirements for other projects.
+- **Configuration:** commands, working directories, execution order, and dependencies must be stored per action rather than encoded as application-specific behavior.
+- **Branches:** Git can query branches and switch the selected repository's branch without leaving the launcher.
+- **Integrated terminal:** ConPTY connects shells and processes to pseudoconsoles hosted by the application. The spike validated Job Objects as a way to group and stop session processes.
+- **Floating UI:** WPF supports a small, borderless, always-on-top window that expands from an arrow-like control.
 
-La principal dificultad técnica es integrar una terminal completa, conservar interactividad/ANSI/redimensionado y administrar con seguridad los árboles de procesos. ConPTY y Job Objects deben validarse con los comandos reales. La actualización de core también puede fallar por credenciales, red o dependencias, y debe tener un flujo de error visible.
+The main technical challenge is integrating a complete terminal, preserving interactivity/ANSI/resize, and safely managing process trees. The spike tested ConPTY, Job Objects, and real commands; further integration and edge-case tests remain necessary. Configured commands may fail because of credentials, network, or dependencies and need visible error handling.
 
-## 3. Decisiones recomendadas
+## 3. Recommended decisions
 
-### D1. Aplicación de escritorio Windows, no web local
+### D1. Windows desktop application, not a local web app
 
-**Decisión:** crear una app nativa local.
+**Decision:** create a native local app.
 
-Una página web normal no puede operar libremente sobre repositorios del disco ni crear pseudo-consolas locales con garantías. Una aplicación de escritorio puede alojar la UI de terminal y administrar procesos locales.
+A normal web page cannot freely operate on disk repositories or create local pseudoconsoles with guarantees. A desktop application can host the terminal UI and manage local processes.
 
-### D2. WPF sobre .NET 10 como hipótesis
+### D2. WPF on .NET 10
 
-**Decisión provisional:** crear una aplicación de escritorio propia; WPF sobre .NET 10 es la hipótesis inicial. La integración terminal se prototipará con EasyWindowsTerminalControl y su viabilidad debe demostrarse antes de construir la UI completa.
+**Decision:** create a standalone desktop application using WPF on .NET 10. The spike validated the basic EasyWindowsTerminalControl integration; see [prototype/README.md](prototype/README.md).
 
-WPF resuelve de forma directa la ventana flotante y la integración Windows/.NET. La terminal integrada es un riesgo técnico aparte: evaluar un control reutilizable o una integración nativa de ConPTY, sus dependencias, compatibilidad con .NET 10, licencias y mantenimiento antes de fijar la decisión tecnológica.
+WPF directly supports the floating window and Windows/.NET integration. The integrated terminal remains a separate maintenance risk: review its dependencies, .NET 10 compatibility, licensing, and maintainability.
 
-**Alternativas descartadas para el MVP:**
+**Alternatives excluded from the MVP:**
 
-- **Web/Vue:** buena para interfaces web, pero requiere un host local con permisos de sistema y no satisface por sí sola el caso de ventana flotante.
-- **Electron o Tauri:** viables técnicamente, pero suman stack y empaquetado para una interfaz pequeña exclusivamente Windows.
-- **PowerShell/WPF como script:** podría servir para una prueba rápida, pero resulta menos mantenible como aplicación con configuración, validaciones y manejo consistente de errores.
+- **Web/Vue:** good for web interfaces, but requires a local host with system permissions and does not itself provide the floating-window use case.
+- **Electron or Tauri:** technically viable, but add a stack and packaging for a small Windows-only interface.
+- **PowerShell/WPF as a script:** suitable for a quick test, but less maintainable as an application with configuration, validation, and consistent error handling.
 
-### D3. Ventana pequeña y menú flotante de sesiones
+### D3. Small window and floating session menu
 
-**Decisión:** iniciar como una ventana compacta sin marco, anclada a una esquina configurable y siempre visible; la flecha abre el menú flotante de proyectos, acciones y sesiones de terminal. Desde el menú se podrán abrir terminales asociadas a proyectos/comandos y volver a sesiones existentes.
+**Decision:** start with a compact borderless window, anchored to a configurable corner and always visible; an arrow opens the floating menu of projects, actions, and terminal sessions. The menu can open terminals associated with projects/commands and return to existing sessions.
 
-La UI del menú y las vistas de terminal podrán plegarse/cambiarse sin destruir sesiones activas. La aplicación tendrá responsabilidad explícita sobre la vida de sus procesos.
+The menu UI and terminal views can be collapsed or switched without destroying active sessions. The application explicitly owns its process lifecycle.
 
-### D4. Descubrimiento restringido a las carpetas de primer nivel
+### D4. User-initiated project search and launch configuration
 
-**Decisión:** la ruta raíz del workspace se configura por proyecto y se persiste. La ubicación actualmente conocida es `../../00-WEBS-CMS`, relativa a la carpeta de esta documentación, y debe proponerse como valor inicial. Buscar solo en directorios hijos inmediatos de la ruta configurada. Considerar un directorio como proyecto únicamente cuando se valide una estructura con:
+**Decision:** do not populate projects automatically or assume a fixed workspace. A **Find projects** button lets the user choose a project directory or a parent directory containing projects. Analyze the chosen directory and, when it is a parent, only its immediate children; present candidates and let the user select which to save. Do not automatically scan other locations. `../../00-WEBS-CMS`, relative to this documentation directory, is a known example for testing, not a required or preconfigured root.
 
-- una raíz Git (`.git` o `git rev-parse --show-toplevel`);
-- un `package.json` bajo una carpeta `app`;
-- un `package.json` bajo `backOffice`;
-- un proyecto ASP.NET Core principal (`.csproj`) en la carpeta del sitio.
+For each selected project, generate a launch configuration with its name, project path, detected working directories, and applicable startup commands where identifiable. Users can configure launch types, including a name and a chosen color for each action, its commands, working directories, parallel or sequential execution, and success-dependent steps. Let the user review and edit the configuration before saving it, persist it for later use, and allow subsequent editing. Launch actions use the saved configuration rather than re-inferring commands on every run. Report missing or ambiguous information for the user to resolve rather than silently inventing paths or commands; analysis and saving must not execute commands.
 
-No recorrer todo el árbol. Así se evita tratar `node_modules`, `bin`, `obj`, `Shared`, proyectos auxiliares y paquetes comunes como proyectos seleccionables. El nombre visible será el nombre del repositorio; las rutas internas serán metadatos descubiertos.
+Git branch operations apply only when the selected project has a valid Git repository; otherwise, the configuration can still be used without a branch selector. Actions are offered only when configured.
 
-En la estructura actual existen 11 candidatos. La carpeta de aplicación de EmbutidosEzequiel es `Ezequiel`, no `EmbutidosEzequiel`, lo que confirma que las rutas deben descubrirse.
+Do not recursively scan the entire selected parent tree. Exclude hidden and package directories such as `node_modules`, `bin`, `obj`, and auxiliary projects from candidate selection. Suggest a display name from the project or repository directory, and store actual detected internal paths rather than inferred names. Do not generate unsupported commands for an unrecognized structure; allow manual configuration.
 
-### D5. Git se opera solo en el repositorio seleccionado
+### D5. Operate Git only in the selected repository
 
-**Decisión:** usar Git CLI en la raíz del repositorio seleccionado. Mostrar la rama actual y listar ramas locales y remotas en grupos diferenciados, cada grupo con icono propio y separados por una barra visual (referencia de interacción: extensión GitHub de VS Code). Elegir una rama local cambia a ella; elegir una remota debe iniciar una acción explícita para crear/cambiar a una rama local de seguimiento, no hacer un checkout remoto implícito.
+**Decision:** use Git CLI in the selected repository root. Show the current branch and list local and remote branches in separate groups with distinct icons and a separator (interaction reference: the GitHub extension in VS Code). Choosing a local branch switches to it; choosing a remote branch must start an explicit action to create or switch to a local tracking branch, not an implicit remote checkout.
 
-**Guardas:**
+**Guardrails:**
 
-- No hacer `fetch`, `pull`, `push`, `stash`, commit ni reset automáticamente.
-- Si hay cambios locales que puedan bloquear el cambio, mostrar el estado y dejar que Git rechace la operación; nunca ocultar cambios con un stash automático.
-- Si la rama tiene que crearse desde una rama remota, pedir confirmación.
-- Actualizar la rama mostrada después del cambio y mostrar el error de Git sin perder la selección del proyecto.
+- Do not automatically run `fetch`, `pull`, `push`, `stash`, commit, or reset.
+- If local changes could block the switch, show the status and let Git reject the operation; never hide changes with an automatic stash.
+- If a branch must be created from a remote branch, ask for confirmation.
+- Update the displayed branch after switching and show Git errors without losing project selection.
 
-### D6. Terminales interactivas integradas con ConPTY
+### D6. Integrated interactive terminals with ConPTY
 
-**Decisión:** la plataforma objetivo es Windows y la aplicación tendrá su propio control de terminal interactiva. Se empezará con [EasyWindowsTerminalControl](https://github.com/MitchCapper/EasyWindowsTerminalControl), encapsulado tras una interfaz/adaptador propio. ConPTY conecta cada shell/proceso a una pseudo-consola; el control renderiza salida VT/ANSI, captura teclado y comunica cambios de tamaño. PowerShell, `pwsh` u otros shells serán procesos alojados dentro de la terminal, no terminales externas.
+**Decision:** the target platform is Windows and the application will have its own interactive terminal control. Start with [EasyWindowsTerminalControl](https://github.com/MitchCapper/EasyWindowsTerminalControl), encapsulated behind a project-owned interface/adapter. ConPTY connects each shell/process to a pseudoconsole; the control renders VT/ANSI output, captures keyboard input, and communicates size changes. PowerShell, `pwsh`, and other shells are hosted processes inside the terminal, not external terminals.
 
-Si el control no satisface requisitos o no permite integrar el ciclo de vida seguro, se mantendrá un fork propio y se adaptará allí. La aplicación no dependerá directamente de los tipos concretos del paquete fuera del adaptador. Fijar versiones y revisar sus dependencias/licencia.
+If the control does not meet requirements or cannot integrate the safe lifecycle, maintain a fork and adapt it there. The application must not depend directly on concrete package types outside the adapter. Pin versions and review dependencies/licenses.
 
-Desde el menú flotante se abrirán terminales por proyecto/comando y se podrán mantener varias sesiones. El arranque de backend, frontend y backoffice puede crear tres sesiones coordinadas; el botón naranja ejecuta primero `update-core:latest` en la sesión frontend y, solo si termina bien, continúa con `npm start`.
+The floating menu opens terminals by project/command and supports multiple sessions. A launch type may coordinate any configured number of sessions.
 
-### D7. Propiedad y parada de procesos por sesión
+### D7. Session process ownership and stopping
 
-**Decisión:** cada sesión tendrá un identificador interno y un grupo de procesos propio. Investigar Job Objects para asignar el proceso raíz y sus descendientes desde el inicio, y detener solo el grupo asociado a esa sesión. Probar la factoría de procesos/extensión que ofrece el control; si no deja asignar el proceso al Job Object en el momento requerido, hacer un fork y adaptar su creación de procesos.
+**Decision:** each session has an internal identifier and its own process group. The spike tested Job Objects to assign the root process and descendants from the start and stop only the group associated with the session. Test the control's process factory/extension; if it cannot assign the process to the Job Object at the required time, fork and adapt process creation.
 
-No exponer `taskkill` ni una operación genérica por PID a la UI/CLI. La prueba debe cubrir descendientes de `dotnet`, `npm` y sus shells, cierre de sesión, cierre de la aplicación y fallos de creación. La parada segura es parte del objetivo, pero su implementación depende del resultado del spike.
+Do not expose `taskkill` or a generic PID-based operation to the UI/CLI. Testing must cover descendants of `dotnet`, `npm`, and their shells, session closure, application closure, and creation failures. Safe stopping is part of the objective and requires validation in the integrated application.
 
-**Docker requiere gestión adicional:** `docker compose` es un cliente local, pero los contenedores los crea y mantiene el daemon de Docker; por tanto, no pertenecen al Job Object de la terminal. El prototipo distinguirá entre interrumpir/cerrar el cliente y parar el proyecto de contenedores. Las pruebas usarán un proyecto Compose aislado; para detenerlo se utilizará una operación explícita y acotada al proyecto (por ejemplo, `docker compose stop`/`down`, nunca `down --volumes` por defecto). No se terminará Docker Desktop ni se detendrán contenedores ajenos.
+**Docker requires additional management:** `docker compose` is a local client, but containers are created and maintained by the Docker daemon; they therefore do not belong to the terminal's Job Object. Distinguish interrupting/closing the client from stopping the container project. Tests use an isolated Compose project; stopping it uses an explicit operation scoped to that project (for example, `docker compose stop`/`down`, never `down --volumes` by default). Do not terminate Docker Desktop or stop unrelated containers.
 
-### D8. Dos acciones con semántica explícita
+### D8. Configurable launch types with explicit semantics
 
-**Arranque normal**
+**Decision:** users can configure multiple named launch types per project, their commands and working directories, and a color for each action. A launch can contain different numbers of processes, run independent sessions in parallel, and sequence commands within a session with later steps conditional on an earlier exit code. Persist these settings and run only the selected action's configured commands. Do not create two fixed default actions or assign fixed meanings to colors.
 
-1. Validar que las carpetas y comandos existen.
-2. Abrir tres sesiones de terminal integradas.
-3. Ejecutar backend, frontend y backoffice.
+Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures; when a prerequisite fails, do not run steps configured to depend on its success, while independent sessions can continue. The [WEBS-CMS example](examples/webs-cms.md) exercises these general capabilities.
 
-**Actualizar core y arrancar**
+### D9. Explicit command effects
 
-1. Validar que existe `npm` y que `app` contiene el script `update-core:latest`.
-2. Abrir tres sesiones. Backend y backoffice comienzan en sus directorios; la sesión frontend inicia la actualización.
-3. En la sesión frontend, ejecutar `npm run update-core:latest` y comprobar su código de salida antes de ejecutar `npm start`.
-4. Si falla la actualización, conservar el error visible y no ejecutar `npm start` del frontend. Backend y backoffice ya iniciados continúan funcionando.
-5. Si termina correctamente, iniciar `npm start` en la sesión frontend.
+**Decision:** never add an update, installation, or other command implicitly. Action labels and any configured descriptions must make their purpose and known effects clear, independently of color. For the update in the WEBS-CMS test example, explain its dependency changes without requesting confirmation; this is not a requirement for every project or action.
 
-No ejecutar simultáneamente una instalación en `app/node_modules` y `npm start`. Mantener actualización e inicio del frontend en la misma sesión permite ver la salida completa y evita lanzar el frontend antes de que termine la actualización.
+### D10. CodeDeck as a reference, not a direct basis
 
-### D9. Arranque normal y actualización de core son acciones diferenciadas
+**Decision:** use the clone at `../CodeDeck` to study workflows, UI, and project, command, and launch-set concepts. The product will have an architecture adapted to ConPTY terminals and sessions with process ownership; CodeDeck is not the direct basis and will not be modified as part of this project.
 
-**Decisión:** mostrar dos botones con semántica y color diferenciados: verde para arranque normal y naranja para `update-core:latest` y arranque. No solicitar confirmación; el usuario conoce el alcance de la actualización. La interfaz debe explicar junto al botón naranja que la actualización puede modificar/reinstalar dependencias.
+The clone is available at `../CodeDeck`, relative to this documentation, for reviewing existing workflows, UI, and architecture.
 
-La razón es el comportamiento actual de `update-core:latest`: ejecuta un actualizador de paquetes core y luego `npm run phoenix`; el script `phoenix` borra `node_modules` y `package-lock.json` y reinstala. No es equivalente a un arranque normal ni se debe ejecutar de forma implícita.
-
-### D10. CodeDeck como referencia, no como base directa
-
-**Decisión:** usar el clon indicado en `../CodeDeck` para estudiar flujos, interfaz y conceptos de proyectos, comandos y conjuntos de lanzamiento. El producto propio tendrá una arquitectura adaptada a terminales ConPTY y sesiones con propiedad de procesos; CodeDeck no es la base directa ni se modificará como parte de este proyecto.
-
-El clon está disponible en `../CodeDeck`, relativo a esta documentación. Se utilizará como referencia al revisar flujos, interfaz y arquitectura existente.
-
-## 4. Flujo funcional propuesto
+## 4. Proposed functional flow
 
 ```text
-Launcher → seleccionar proyecto → ver rama
-                            ↓
-                 cambiar rama (opcional)
-                   ↙                 ↘
-       Arrancar normal         Actualizar y arrancar
-            ↓                         ↓
-       abrir 3 sesiones       actualizar core en app
-             ↓                  ├─ error → no iniciar frontend
-      3 procesos              └─ éxito → iniciar frontend
-                               backend y backoffice ya iniciados
+Find projects → choose location → review and save configuration
+                                      ↓
+Select saved project → optionally view or switch Git branch
+                              ↓
+                     select configured action
+                              ↓
+        run configured sessions, order, and dependencies
+                              ↓
+           show output, status, and any failed steps
 ```
 
-Las sesiones continúan al plegar el menú; la vista de terminal permite seguir interactuando con ellas. La aplicación conserva estado/salida útil y ofrece una parada limitada a la sesión propia, si Job Objects supera las pruebas.
+Sessions continue when the menu is collapsed; the terminal view allows continued interaction. The application retains useful state/output and offers stopping scoped to the owned session, subject to Job Object validation.
 
-## 5. Riesgos y mitigaciones
+## 5. Risks and mitigations
 
-| Riesgo | Mitigación |
+| Risk | Mitigation |
 |---|---|
-| Rutas diferentes entre repositorios | Descubrir y validar directorios; no inferir nombres internos a partir del repo. |
-| Directorios auxiliares detectados como sitios | Escaneo de primer nivel y validación de Git, `app`, `backOffice` y `.csproj`. |
-| Cambiar de rama con cambios locales | Mostrar estado, no usar stash automático y conservar los errores de Git. |
-| Terminal ConPTY incompleta (resize, ANSI, teclado o encoding) | Prototipo temprano con shells y procesos reales; usar un control probado y documentar sus dependencias/licencia. |
-| Descendientes de procesos no quedan bajo control | Asignación temprana a Job Object y pruebas de árboles `dotnet`/`npm`; no implementar stop si se puede escapar el árbol. |
-| Detener el cliente Docker deja contenedores activos | Identificar de forma separada procesos de cliente y proyectos/recursos Compose; operar solo sobre el proyecto iniciado por la sesión y probar `stop` frente a `down`. |
-| Actualización lenta o fallida | Esperar el exit code, mostrar progreso y bloquear el arranque del frontend si falla. |
-| Instalar core modifica dependencias | Botón naranja separado y explicación visible de los efectos; no hay confirmación modal. |
-| Sesiones duplicadas | Identificar cada sesión, mostrarla en el menú flotante y evitar dobles clics durante el lanzamiento. |
+| Different paths across repositories | Analyze the user-selected location and validate directories; do not infer internal names from repository names. |
+| Auxiliary directories detected as projects | Limit parent-directory searches to immediate children, exclude package directories, and validate candidates without requiring a specific stack. |
+| Generated commands are missing or incorrect | Show the proposed configuration for review and editing, flag ambiguity, and do not execute commands during search or saving. |
+| Switching branches with local changes | Show status, do not use automatic stash, and preserve Git errors. |
+| Incomplete ConPTY terminal (resize, ANSI, keyboard, or encoding) | Prototype early with real shells and processes; use a tested control and document its dependencies/license. |
+| Process descendants escape control | Assign early to a Job Object and test `dotnet`/`npm` trees; do not implement stop if the tree can escape. |
+| Stopping the Docker client leaves containers running | Separately identify client processes and Compose projects/resources; operate only on the project started by the session and test `stop` versus `down`. |
+| Failed prerequisite or slow command | Show progress and exit status; skip success-dependent steps on failure while independent sessions continue. |
+| Configured commands modify project data or dependencies | Run only selected commands and make known effects visible; test the WEBS-CMS update behavior separately. |
+| Duplicate sessions | Identify each session, show it in the floating menu, and prevent double clicks during launch. |
 
-## 6. No incluido en el MVP
+## 6. Out of scope for the MVP
 
-- Crear, clonar o eliminar repositorios.
-- `fetch`, `pull`, `push`, commits o stash.
-- Seleccionar versiones de Node/.NET por proyecto.
-- Instalar dependencias faltantes de forma automática.
-- Administrar variables de entorno o secretos.
-- Terminales externas como UX principal; pueden abrirse manualmente fuera de la aplicación, pero no forman parte del ciclo de vida administrado.
-- Soporte multiplataforma.
-- Cambiar la configuración o los scripts de los proyectos existentes.
+- Creating, cloning, or deleting repositories.
+- `fetch`, `pull`, `push`, commits, or stash.
+- Selecting Node/.NET versions per project.
+- Installing missing dependencies unless the user explicitly configures a command that does so.
+- Managing environment variables or secrets.
+- External terminals as the primary UX; they can be opened manually outside the application, but are not part of the managed lifecycle.
+- Cross-platform support.
+- The launcher directly changing existing project configuration or scripts; explicitly configured commands may modify project files.
 
-## 7. Conclusión
+## 7. Conclusion
 
-El producto propio se inspirará en los flujos de CodeDeck, pero tendrá terminales interactivas integradas con ConPTY, abiertas y gestionadas desde el menú flotante. La hipótesis es **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. Antes de construir la UI completa hay que probar terminal rendering/input/resize, el control de procesos hijos y la viabilidad del control de terminal seleccionado. Cualquier interfaz futura (incluida CLI para IA) debe pedir acciones de sesión por identificador gestionado, nunca terminar PIDs arbitrarios.
+The product will draw inspiration from CodeDeck's workflows, but will have integrated interactive ConPTY terminals opened and managed from the floating menu. The selected approach is **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. The spike validated terminal rendering/input/resize, basic child-process control, and the selected control; the complete application still needs integration and edge-case testing. Any future interface, including an AI-facing CLI, must request session actions by managed identifier and never terminate arbitrary PIDs.
