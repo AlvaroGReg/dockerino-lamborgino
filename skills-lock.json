@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "skills": {
+    "diagnosing-bugs": {
+      "source": "mattpocock/skills",
+      "commit": "abeeaf95660ba9e8b7c753eb38f441ca707a8823",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
+      "computedHash": "87c78ae966e591f9ceb177789cc5cc9de69277cd26679ffd36ca5300f430d513"
+    },
+    "doc-coauthoring": {
+      "source": "anthropics/skills",
+      "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+      "sourceType": "github",
+      "skillPath": "skills/doc-coauthoring/SKILL.md",
+      "computedHash": "d32facc16a25b47a21a90e79c1e6c072d342a9e41b595b58b86f869ff33ccc26"
+    },
+    "dotnet-wpf-modern": {
+      "source": "wshaddix/dotnet-skills",
+      "commit": "09da68dc1f3c06f3bde05f49a6301c75478ab123",
+      "sourceType": "github",
+      "skillPath": "skills/dotnet-wpf-modern/SKILL.md",
+      "computedHash": "c9a0b64173a879b3376512fd1584cfcc9e17505821180d742dce015645789f84"
+    },
+    "tdd": {
+      "source": "mattpocock/skills",
+      "commit": "abeeaf95660ba9e8b7c753eb38f441ca707a8823",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/tdd/SKILL.md",
+      "computedHash": "e3e0f78ff1c2d52ffefa0378baa1e80e129d359288cf9a56f4e59afcd2aac86c"
+    }
+  }
+}
