@@ -1,10 +1,10 @@
 # WEBS-CMS example and test case
 
-This is a real target workspace and a representative test case for the launcher, not a required project layout, set of commands, or pair of default launch actions. The user chooses the location and reviews and edits any generated configuration. Other projects may have different directories, technologies, numbers of processes, and launch types.
+This is a real target workspace and a representative test case for the launcher, not a required project layout, set of commands, or pair of default launch actions. The user or a user-directed AI agent can use this information to enter a configuration manually through the UI or CLI. The application does not detect the layout or generate a configuration from it. Other projects may have different directories, technologies, numbers of processes, and launch types.
 
 ## Observed workspace
 
-The examined workspace is at `../../00-WEBS-CMS`, relative to the documentation root. It contained 11 Git repositories, all with `app/package.json` and `backOffice/package.json`. Most follow `<repo>/<project>/<app|backOffice>`; EmbutidosEzequiel uses `Ezequiel` as its application directory. Paths must be detected or configured, not inferred from repository names.
+The examined workspace is at `../../00-WEBS-CMS`, relative to the documentation root. It contained 11 Git repositories, all with `app/package.json` and `backOffice/package.json`. Most follow `<repo>/<project>/<app|backOffice>`; EmbutidosEzequiel uses `Ezequiel` as its application directory. These observations illustrate why the user or agent must determine and explicitly provide actual paths rather than rely on application inference from repository names.
 
 The main ASP.NET Core projects targeted `net10.0`. The frontend declared `start = npm run build:watch`. The backoffice declared `prestart = npm run combine` and `start = ng serve`; `npm start` also runs npm's `prestart` lifecycle hook. These observations are historical and should be rechecked before testing.
 
@@ -22,6 +22,6 @@ The observed `update-core:latest` script runs the core package updater and then 
 
 ## Test coverage
 
-Use this workspace to test user-initiated search, review and editing of generated paths and commands, configuration persistence, three parallel terminal sessions, and a conditional sequence with both successful and failed prerequisites. Also test projects with other structures and process counts; success with WEBS-CMS alone does not establish generality.
+Use this workspace to test explicit project registration, manual configuration through the UI and CLI, configuration persistence, three parallel terminal sessions, and a conditional sequence with both successful and failed prerequisites. Also test projects with other structures and process counts; success with WEBS-CMS alone does not establish generality.
 
 The initial inventory did not execute startup or update commands. The [spike report](../prototype/README.md) records subsequent real startup tests and their limits; it does not establish that the update flow was tested.

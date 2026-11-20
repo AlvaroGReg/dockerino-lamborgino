@@ -7,7 +7,7 @@ Developers work with local projects whose commands, directories, process counts,
 The desired experience is:
 
 1. A floating bubble on screen opens the project list.
-2. The user can search for projects, choose their location, and save a generated launch configuration. The list contains saved projects rather than automatically discovered projects.
+2. The user can register one explicitly selected project directory and manually create and save its launch configuration. The list contains saved projects rather than automatically discovered projects.
 3. The user selects a saved project and sees its current branch, branch selector, and applicable startup actions.
 4. The user selects a named launch action, which runs its configured processes and sequence.
 5. Processes appear as integrated interactive terminal sessions accessible from the floating menu.
@@ -52,17 +52,21 @@ WPF directly supports the floating window and Windows/.NET integration. The inte
 
 The menu UI and terminal views can be collapsed or switched without destroying active sessions. The application explicitly owns its process lifecycle.
 
-### D4. User-initiated project search and launch configuration
+### D4. Explicit project registration and manual launch configuration
 
-**Decision:** do not populate projects automatically or assume a fixed workspace. A **Find projects** button lets the user choose a project directory or a parent directory containing projects. Analyze the chosen directory and, when it is a parent, only its immediate children; present candidates and let the user select which to save. Do not automatically scan other locations. `../../00-WEBS-CMS`, relative to this documentation directory, is a known example for testing, not a required or preconfigured root.
+**Decision:** do not populate projects automatically, infer project details, or assume a fixed workspace. A **Find project** action lets the user select exactly one project directory to register. Do not scan its children or other locations. `../../00-WEBS-CMS`, relative to this documentation directory, is a known example for testing, not a required or preconfigured root.
 
-For each selected project, generate a launch configuration with its name, project path, detected working directories, and applicable startup commands where identifiable. Users can configure launch types, including a name and a chosen color for each action, its commands, working directories, parallel or sequential execution, and success-dependent steps. Let the user review and edit the configuration before saving it, persist it for later use, and allow subsequent editing. Launch actions use the saved configuration rather than re-inferring commands on every run. Report missing or ambiguous information for the user to resolve rather than silently inventing paths or commands; analysis and saving must not execute commands.
+Project and launch configurations are created and edited explicitly by the user through the UI or CLI. Do not automatically inspect project files to infer project information, working directories, startup commands, or launch types. Users can configure multiple named launch types, including a chosen color, commands, working directories, parallel or sequential execution, and success-dependent steps. Let the user review configurations before saving, persist them for later use, and allow subsequent editing. Launch actions use saved configuration and never re-infer commands when run. Registration and saving must not execute commands.
 
-Git branch operations apply only when the selected project has a valid Git repository; otherwise, the configuration can still be used without a branch selector. Actions are offered only when configured.
+An AI agent may inspect a project when directed by the user, following supplied criteria or project guidance such as `AGENTS.md` and `README.md`. The agent can use the CLI to create or edit the requested configuration with the values it determines. This is agent-directed inspection and explicit configuration, not application auto-detection. Git branch operations apply only when the selected project has a valid Git repository; otherwise, the configuration can still be used without a branch selector. Actions are offered only when configured.
 
-Do not recursively scan the entire selected parent tree. Exclude hidden and package directories such as `node_modules`, `bin`, `obj`, and auxiliary projects from candidate selection. Suggest a display name from the project or repository directory, and store actual detected internal paths rather than inferred names. Do not generate unsupported commands for an unrecognized structure; allow manual configuration.
+Do not scan child directories to discover projects. Store the project name, paths, and commands explicitly provided by the user or an agent acting on the user's instructions. Validate supplied paths and configuration values, and report missing or invalid information rather than inventing values.
 
-### D5. Operate Git only in the selected repository
+### D5. CLI parity for application actions
+
+**Decision:** every action available in the application must also be available through its CLI so AI agents can use the application's supported capabilities. The UI and CLI share the same domain/backend behavior and validation. The CLI supports project and launch-configuration management, Git operations, launching configured actions, and managed terminal-session operations. Use managed identifiers; never accept arbitrary PIDs or run commands that are not explicitly configured.
+
+### D6. Operate Git only in the selected repository
 
 **Decision:** use Git CLI in the selected repository root. Show the current branch and list local and remote branches in separate groups with distinct icons and a separator (interaction reference: the GitHub extension in VS Code). Choosing a local branch switches to it; choosing a remote branch must start an explicit action to create or switch to a local tracking branch, not an implicit remote checkout.
 
@@ -73,7 +77,7 @@ Do not recursively scan the entire selected parent tree. Exclude hidden and pack
 - If a branch must be created from a remote branch, ask for confirmation.
 - Update the displayed branch after switching and show Git errors without losing project selection.
 
-### D6. Integrated interactive terminals with ConPTY
+### D7. Integrated interactive terminals with ConPTY
 
 **Decision:** the target platform is Windows and the application will have its own interactive terminal control. Start with [EasyWindowsTerminalControl](https://github.com/MitchCapper/EasyWindowsTerminalControl), encapsulated behind a project-owned interface/adapter. ConPTY connects each shell/process to a pseudoconsole; the control renders VT/ANSI output, captures keyboard input, and communicates size changes. PowerShell, `pwsh`, and other shells are hosted processes inside the terminal, not external terminals.
 
@@ -81,7 +85,7 @@ If the control does not meet requirements or cannot integrate the safe lifecycle
 
 The floating menu opens terminals by project/command and supports multiple sessions. A launch type may coordinate any configured number of sessions.
 
-### D7. Session process ownership and stopping
+### D8. Session process ownership and stopping
 
 **Decision:** each session has an internal identifier and its own process group. The spike tested Job Objects to assign the root process and descendants from the start and stop only the group associated with the session. Test the control's process factory/extension; if it cannot assign the process to the Job Object at the required time, fork and adapt process creation.
 
@@ -89,26 +93,30 @@ Do not expose `taskkill` or a generic PID-based operation to the UI/CLI. Testing
 
 **Docker requires additional management:** `docker compose` is a local client, but containers are created and maintained by the Docker daemon; they therefore do not belong to the terminal's Job Object. Distinguish interrupting/closing the client from stopping the container project. Tests use an isolated Compose project; stopping it uses an explicit operation scoped to that project (for example, `docker compose stop`/`down`, never `down --volumes` by default). Do not terminate Docker Desktop or stop unrelated containers.
 
-### D8. Configurable launch types with explicit semantics
+### D9. Configurable launch types with explicit semantics
 
 **Decision:** users can configure multiple named launch types per project, their commands and working directories, and a color for each action. A launch can contain different numbers of processes, run independent sessions in parallel, and sequence commands within a session with later steps conditional on an earlier exit code. Persist these settings and run only the selected action's configured commands. Do not create two fixed default actions or assign fixed meanings to colors.
 
 Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures; when a prerequisite fails, do not run steps configured to depend on its success, while independent sessions can continue. The [WEBS-CMS example](examples/webs-cms.md) exercises these general capabilities.
 
-### D9. Explicit command effects
+### D10. Explicit command effects
 
 **Decision:** never add an update, installation, or other command implicitly. Action labels and any configured descriptions must make their purpose and known effects clear, independently of color. For the update in the WEBS-CMS test example, explain its dependency changes without requesting confirmation; this is not a requirement for every project or action.
 
-### D10. CodeDeck as a reference, not a direct basis
+### D11. CodeDeck as a reference, not a direct basis
 
 **Decision:** use the clone at `../CodeDeck` to study workflows, UI, and project, command, and launch-set concepts. The product will have an architecture adapted to ConPTY terminals and sessions with process ownership; CodeDeck is not the direct basis and will not be modified as part of this project.
 
 The clone is available at `../CodeDeck`, relative to this documentation, for reviewing existing workflows, UI, and architecture.
 
+### D12. Require .NET 10 to be installed
+
+**Decision:** require the .NET 10 runtime to be installed on the machine where the application runs. The MVP will not ship as a self-contained application bundling the runtime. Development and build instructions may require the .NET 10 SDK.
+
 ## 4. Proposed functional flow
 
 ```text
-Find projects → choose location → review and save configuration
+Find project → choose directory → manually configure and save
                                       ↓
 Select saved project → optionally view or switch Git branch
                               ↓
@@ -125,9 +133,8 @@ Sessions continue when the menu is collapsed; the terminal view allows continued
 
 | Risk | Mitigation |
 |---|---|
-| Different paths across repositories | Analyze the user-selected location and validate directories; do not infer internal names from repository names. |
-| Auxiliary directories detected as projects | Limit parent-directory searches to immediate children, exclude package directories, and validate candidates without requiring a specific stack. |
-| Generated commands are missing or incorrect | Show the proposed configuration for review and editing, flag ambiguity, and do not execute commands during search or saving. |
+| Incorrect or incomplete manually supplied paths and commands | Validate values, report errors, and let the user or user-directed agent correct the configuration; do not infer replacements. |
+| UI and CLI behavior diverge | Route both interfaces through the same domain/backend operations and test supported actions through both. |
 | Switching branches with local changes | Show status, do not use automatic stash, and preserve Git errors. |
 | Incomplete ConPTY terminal (resize, ANSI, keyboard, or encoding) | Prototype early with real shells and processes; use a tested control and document its dependencies/license. |
 | Process descendants escape control | Assign early to a Job Object and test `dotnet`/`npm` trees; do not implement stop if the tree can escape. |
@@ -149,4 +156,4 @@ Sessions continue when the menu is collapsed; the terminal view allows continued
 
 ## 7. Conclusion
 
-The product will draw inspiration from CodeDeck's workflows, but will have integrated interactive ConPTY terminals opened and managed from the floating menu. The selected approach is **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. The spike validated terminal rendering/input/resize, basic child-process control, and the selected control; the complete application still needs integration and edge-case testing. Any future interface, including an AI-facing CLI, must request session actions by managed identifier and never terminate arbitrary PIDs.
+The product will draw inspiration from CodeDeck's workflows, but will have integrated interactive ConPTY terminals opened and managed from the floating menu and CLI. Project and launch configurations are entered explicitly; an AI agent may inspect project guidance at the user's direction and submit the requested configuration through the CLI. The selected approach is **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. The spike validated terminal rendering/input/resize, basic child-process control, and the selected control; the complete application still needs integration and edge-case testing. The CLI must use managed identifiers and never terminate arbitrary PIDs.

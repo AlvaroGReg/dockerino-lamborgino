@@ -8,11 +8,11 @@ Develop a small Windows desktop application for selecting a configured project, 
 
 Build a local Windows desktop application for managing development projects, switching Git branches, and opening terminals **integrated into the application** from a floating menu. Terminals will be interactive: users can see output and type into them, not merely observe logs.
 
-The user explicitly searches for projects and chooses where to look. The launcher analyzes the selected location and generates a saved, editable launch configuration with applicable commands and working directories. Users configure launch types, their processes, ordering and dependencies, and choose a color for each action; there are no two fixed default actions. The [WEBS-CMS workflow](examples/webs-cms.md) is a concrete example and test case, not the product's required structure. The Phase 1 spike validated **WPF on .NET 10 + ConPTY + Job Objects**, including physical keyboard input and visual resizing.
+The user explicitly selects and registers one project directory. Project details and editable launch configurations are entered manually; the application does not inspect project files to infer commands or configuration. An AI agent may inspect project guidance such as `AGENTS.md` or `README.md` when the user directs it, then use the CLI to create or edit the requested configuration. Every application action is available through the CLI as well as the UI. Users configure launch types, their processes, ordering and dependencies, and choose a color for each action; there are no two fixed default actions. The [WEBS-CMS workflow](examples/webs-cms.md) is a concrete example and test case, not the product's required structure. The Phase 1 spike validated **WPF on .NET 10 + ConPTY + Job Objects**, including physical keyboard input and visual resizing.
 
 ### Project location
 
-There is no prepopulated project list or automatic workspace scan. A **Find projects** button lets the user choose a project directory or a directory containing projects. The launcher analyzes only that chosen location, presents the results, and saves selected projects as launch configurations. `../../00-WEBS-CMS`, relative to this documentation directory, is an example location for testing, not a hard-coded or required workspace.
+There is no prepopulated project list or automatic workspace scan. A **Find project** action lets the user select one project directory to register; its children are not scanned as separate projects. Project and launch details are provided manually through the UI or CLI. `../../00-WEBS-CMS`, relative to this documentation directory, is an example location for testing, not a hard-coded or required workspace.
 
 ## Before implementation
 
@@ -21,10 +21,12 @@ The initial product decisions have been made and incorporated into the developme
 ## Decisions
 
 - **Platform/terminal:** Windows. The application will have integrated, interactive ConPTY terminals; PowerShell and other shells run inside them, rather than external windows replacing the application's terminal.
-- **Location and configuration:** the user initiates project search and chooses the location. Detected projects are not added until selected; the launcher generates a saved, editable configuration containing their paths and startup commands.
+- **Location and configuration:** the user explicitly selects one project directory and manually provides project and launch details. The application does not detect projects or generate commands from project files.
+- **Agent access:** all application actions are available through the CLI. An agent may inspect project files according to user-supplied criteria or project guidance, then use the CLI to perform the requested application actions.
 - **Actions:** users configure launch types, commands, working directories, execution order and conditions, and choose each action's color from several options. Actions are identified by name as well as color; there are no fixed green or orange defaults. Only explicitly configured commands run.
 - **Branches:** show local and remote branches in separate sections, with distinct icons and a separator (inspired by the GitHub extension in VS Code). Choosing a remote branch requires an explicit action to create or switch to a local branch.
 - **Sessions and processes:** terminals are opened and managed from the floating menu. The spike confirmed ConPTY and Job Objects for stopping a session's own process tree; the interface must never accept arbitrary PIDs.
+- **Distribution:** require the .NET 10 runtime to be installed; do not ship a self-contained application bundling it.
 - **Product reference:** the [CodeDeck](../CodeDeck) clone is at `../CodeDeck`, relative to this documentation. It is a reference for workflows, UI, and project, command, and launch-set concepts; it is neither the product's direct basis nor a project to modify here.
 - **Docker:** the spike confirmed that closing the client session does not stop a detached container; stopping or removing containers is an explicit operation scoped to the Compose project. Containers are managed by the Docker daemon and are not ordinary descendants of the local process; Job Objects alone cannot stop them.
 
@@ -52,4 +54,4 @@ Configurations must support different numbers and kinds of processes, sequential
 
 ## Basis for the analysis
 
-The proposal was checked against a real workspace described in the [WEBS-CMS example](examples/webs-cms.md). Those observations must be checked again when testing search and configuration generation. The initial inventory did not execute startup or update commands; subsequent startup tests are recorded in the spike report.
+The proposal was checked against a real workspace described in the [WEBS-CMS example](examples/webs-cms.md). Those observations can inform user- or agent-authored launch configurations and test cases; they do not drive application auto-detection. The initial inventory did not execute startup or update commands; subsequent startup tests are recorded in the spike report.

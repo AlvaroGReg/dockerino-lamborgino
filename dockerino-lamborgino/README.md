@@ -1,8 +1,9 @@
 # dockerino-lamborgino — Phase 2 skeleton
 
 Windows desktop application targeting .NET 10. This is an early skeleton, not
-the completed project launcher. Project search, saved configurations, Git
-operations, and configurable launches are not implemented.
+the completed project launcher. Explicit project registration, manual saved
+configurations, CLI operations, Git operations, and configurable launches are
+not implemented.
 
 ## Build and run
 
