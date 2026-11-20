@@ -3,6 +3,8 @@
 Windows desktop application targeting .NET 10. Phase 3 provides project
 registration and manual configuration through the UI and CLI. Git operations
 and execution of saved launch configurations are not yet implemented.
+The application uses WPF's built-in Fluent theme and follows the Windows
+light/dark setting; the terminal retains its own dark background.
 
 ## Build and run
 

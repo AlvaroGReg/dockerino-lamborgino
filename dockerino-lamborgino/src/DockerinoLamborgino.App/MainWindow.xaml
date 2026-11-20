@@ -2,11 +2,10 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="dockerino-lamborgino" Width="940" Height="620" MinWidth="400" MinHeight="220"
-        WindowStyle="None" ResizeMode="CanResizeWithGrip" Topmost="True"
-        Background="#1E1E1E" Foreground="White">
-    <Border BorderBrush="#777" BorderThickness="1">
+        WindowStyle="None" ResizeMode="CanResizeWithGrip" Topmost="True">
+    <Border BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" BorderThickness="1">
         <DockPanel>
-            <Border DockPanel.Dock="Top" Background="#303030" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Border DockPanel.Dock="Top" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <DockPanel Margin="6">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="CollapseButton" Content="Collapse" Click="Collapse_Click" Margin="2" Padding="8,3"/>
@@ -20,7 +19,7 @@
                     <ColumnDefinition x:Name="MenuColumn" Width="240"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Border x:Name="MenuPanel" Background="#292929" Padding="10">
+                <Border x:Name="MenuPanel" Padding="10">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top">
                             <TextBlock Text="PROJECTS" FontWeight="Bold" Margin="0,0,0,4"/>
@@ -28,10 +27,10 @@
                             <Button Content="Manage projects…" Click="ManageProjects_Click" Padding="7,4"/>
                             <Separator Margin="0,10"/>
                             <TextBlock Text="BRANCH" FontWeight="Bold" Margin="0,0,0,4"/>
-                            <TextBlock Text="Branch selection is not available yet." TextWrapping="Wrap" Foreground="#BBBBBB"/>
+                            <TextBlock Text="Branch selection is not available yet." TextWrapping="Wrap"/>
                             <Separator Margin="0,10"/>
                             <TextBlock Text="COMMANDS" FontWeight="Bold" Margin="0,0,0,4"/>
-                            <TextBlock Text="Launch actions are not available yet." TextWrapping="Wrap" Foreground="#BBBBBB"/>
+                            <TextBlock Text="Launch actions are not available yet." TextWrapping="Wrap"/>
                             <Separator Margin="0,10"/>
                             <TextBlock Text="SESSIONS" FontWeight="Bold" Margin="0,0,0,4"/>
                             <StackPanel Orientation="Horizontal">
@@ -41,7 +40,7 @@
                         </StackPanel>
                         <ListBox x:Name="SessionsList" SelectionChanged="SessionsList_SelectionChanged" DisplayMemberPath="Label">
                             <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                                     <Setter Property="AutomationProperties.Name" Value="{Binding Label}"/>
                                 </Style>
                             </ListBox.ItemContainerStyle>
@@ -49,7 +48,7 @@
                     </DockPanel>
                 </Border>
                 <DockPanel Grid.Column="1">
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Background="#383838">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
                         <Button x:Name="MenuButton" Content="Hide menu" Click="Menu_Click" Padding="7,4" Margin="5"/>
                         <TextBlock x:Name="StatusText" Text="Open a terminal to begin." VerticalAlignment="Center" Margin="5" TextWrapping="Wrap"/>
                     </StackPanel>
