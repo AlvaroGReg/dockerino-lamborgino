@@ -1,4 +1,4 @@
-# Analysis and decisions: project launcher
+# Analysis and decisions: dockerino-lamborgino
 
 ## 1. Context and need
 

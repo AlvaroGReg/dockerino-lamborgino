@@ -1,4 +1,4 @@
-# Development plan: local project launcher
+# Development plan: dockerino-lamborgino
 
 This plan turns the decisions in [decisiones.md](decisiones.md) into implementable stages. The status of the Phase 1 spike is recorded in [prototype/README.md](prototype/README.md).
 
@@ -11,7 +11,7 @@ The initial platform, path, terminal interface, button, and branch decisions are
 
 ## Phase 1: integration prototype
 
-**Status: the Phase 1 blocker was resolved and the spike acceptance criteria were approved on 2026-11-19.** The reproduced issue was isolated to the host's standard handles: with `STARTF_USESTDHANDLES` and null handles, the prompt reaches ConPTY and the shell remains alive. The regression failed before and passed after the fix; `pwsh` and `cmd` passed passive checks, and a test process's exit code 23 was observed. Debug and Release build successfully. PID, state, errors, and output are logged without treating `TermReady` as acceptance. The user confirmed the prompt, physical keyboard, and visual resize; the marker file created from the terminal was verified. See [prototype/README.md](prototype/README.md) for evidence and limitations. The full UI has not been started.
+**Status: the Phase 1 blocker was resolved and the spike acceptance criteria were approved on 2026-11-19.** The reproduced issue was isolated to the host's standard handles: with `STARTF_USESTDHANDLES` and null handles, the prompt reaches ConPTY and the shell remains alive. The regression failed before and passed after the fix; `pwsh` and `cmd` passed passive checks, and a test process's exit code 23 was observed. Debug and Release build successfully. PID, state, errors, and output are logged without treating `TermReady` as acceptance. The user confirmed the prompt, physical keyboard, and visual resize; the marker file created from the terminal was verified. See [prototype/README.md](prototype/README.md) for evidence and limitations. Phase 2 has since started; its separate acceptance is tracked below.
 
 Create a minimal prototype with **EasyWindowsTerminalControl** behind a project-owned interface/adapter that can:
 
@@ -30,11 +30,16 @@ Verify the selected control's license, versions, and dependencies. Keep alternat
 
 ## Phase 2: WPF skeleton
 
+**Status: Phase 2 tests completed and the skeleton accepted by the user.**
+Implementation, automated results, the user's manual observations, and
+remaining evidence limitations are in
+[`dockerino-lamborgino/PHASE-2-EVIDENCE.md`](dockerino-lamborgino/PHASE-2-EVIDENCE.md).
+
 - Create an independent .NET 10 WPF application in its own workspace directory, not inside a site.
 - Implement a compact, borderless, always-on-top window that can collapse and expand.
 - Add a floating menu for projects, current branch, commands, and terminal sessions.
 - Integrate interactive terminal views and allow sessions to be opened or reselected from the menu.
-- Keep sessions alive when the menu is collapsed or closed, and define behavior when the application closes.
+- Keep sessions alive when the menu is collapsed or closed. Closing the application stops its sessions and their owned process trees; detached Docker containers require separate explicit management.
 - Create a domain/backend layer for sessions and projects that can later be shared by the UI and an AI-facing CLI.
 
 ## Phase 3: user-initiated project search and configuration
@@ -99,5 +104,12 @@ The [WEBS-CMS example](examples/webs-cms.md) is one acceptance test fixture, inc
 
 ## Implementation questions
 
-- What happens to sessions when the application closes and reopens: persist, reconnect, or terminate?
 - Review the selected ConPTY control's full dependency and license graph before distribution.
+
+## Future terminal improvements
+
+- Investigate and optionally implement terminal keyboard handling and shortcuts.
+  The user reports that pressing Tab removes focus from the terminal instead of
+  completing input. Preserve shell and interactive-program behavior, consider
+  Shift+Tab, and provide an accessible way to move focus out of the terminal.
+  This issue is not yet fixed or independently diagnosed.

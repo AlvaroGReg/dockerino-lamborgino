@@ -1,8 +1,8 @@
-# Local project launcher
+# dockerino-lamborgino
 
 ## Purpose
 
-Assess the feasibility of a small Windows desktop application for selecting a configured project, optionally changing its Git branch, and running its configured commands in integrated terminals. This document prepares development; it does not describe an implementation that already exists.
+Develop a small Windows desktop application for selecting a configured project, optionally changing its Git branch, and running its configured commands in integrated terminals. The Phase 2 skeleton is in [`dockerino-lamborgino/`](dockerino-lamborgino/README.md).
 
 ## Overview
 
@@ -47,6 +47,7 @@ Configurations must support different numbers and kinds of processes, sequential
 
 - [Architecture decisions](decisiones.md): proposal, alternatives, and risks.
 - [Development plan](plan.md): phases, acceptance criteria, and outstanding questions.
+- [Application](dockerino-lamborgino/README.md): WPF skeleton, build instructions, and Phase 2 evidence.
 - [WEBS-CMS example](examples/webs-cms.md): observed project structure and representative launch configurations for testing.
 
 ## Basis for the analysis
