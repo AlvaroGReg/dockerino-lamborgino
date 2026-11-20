@@ -36,8 +36,10 @@ public static class Program
                     return Save(file, null);
                 case ["save", var file, var revision]:
                     return Save(file, revision);
+                case ["git", ..]:
+                    return GitCommands.Run(args[1..], service, output, error);
                 default:
-                    error.WriteLine("Usage: list | get <id> | register <name> <absolute-directory> | validate <json-file> | save <json-file> [expected-revision]");
+                    error.WriteLine("Usage: list | get <id> | register <name> <absolute-directory> | validate <json-file> | save <json-file> [expected-revision] | git status|switch|fetch|pull ...");
                     return 2;
             }
 

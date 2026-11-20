@@ -9,6 +9,8 @@ public sealed class ProjectConfiguration
     public Guid Id { get; set; }
     public string Name { get; set; } = "";
     public string Directory { get; set; } = "";
+    // Explicit paths only; older project files without this property have no associations.
+    public List<string> Repositories { get; set; } = [];
     [JsonRequired]
     public List<LaunchAction> Actions { get; set; } = [];
 }

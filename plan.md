@@ -62,7 +62,7 @@ remain in later phases.
 
 ## Phase 4: repository and branch management
 
-**Status: planned; not yet implemented.** The scope and guardrails are recorded in [D6](decisiones.md#d6-operate-git-in-explicitly-associated-repositories).
+**Status: implemented; user acceptance and some verification remain outstanding.** See [Phase 4 evidence](dockerino-lamborgino/PHASE-4-EVIDENCE.md) for checks and limitations. The scope and guardrails are recorded in [D6](decisiones.md#d6-operate-git-in-explicitly-associated-repositories).
 
 - Let users manually associate multiple repository paths with a project through the UI and CLI, including paths outside the project directory. Do not discover repositories automatically. Validate paths and preserve usability of projects without valid repositories.
 - For each associated repository, query its current branch, local and remote branches, and working-tree status. Show local and remote branches in visually distinct groups, with distinct icons and a separator (visual reference: the GitHub extension in VS Code).

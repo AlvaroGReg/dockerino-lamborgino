@@ -99,6 +99,44 @@ public sealed class ProjectConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void ExplicitRepositoriesRoundTripThroughCliAndLegacyFilesRemainCompatible()
+    {
+        var project = ProjectConfigurationService.Create("Example", root);
+        var external = Path.Combine(root, "external repository");
+        Directory.CreateDirectory(external);
+        Assert.Empty(project.Repositories);
+        Assert.Empty(service.Save(project));
+        var loaded = service.Get(project.Id);
+        loaded.Project!.Repositories.Add(external);
+        var file = Path.Combine(root, "edited.json");
+        File.WriteAllText(file, JsonSerializer.Serialize(loaded.Project, ProjectConfigurationService.JsonOptions));
+        Assert.Equal(0, Program.Run(["save", file, loaded.Revision!], new StringWriter(), new StringWriter(), service.StorageDirectory));
+        Assert.Equal([external], service.Get(project.Id).Project!.Repositories);
+        var output = new StringWriter();
+        Assert.Equal(0, Program.Run(["get", project.Id.ToString()], output, new StringWriter(), service.StorageDirectory));
+        Assert.Equal([external], JsonSerializer.Deserialize<ProjectLoadResult>(output.ToString(), ProjectConfigurationService.JsonOptions)!.Project!.Repositories);
+
+        File.WriteAllText(file, JsonSerializer.Serialize(new { id = Guid.NewGuid(), name = "legacy", directory = root, actions = Array.Empty<object>() }));
+        Assert.Empty(service.LoadFile(file).Project!.Repositories);
+        Assert.Empty(service.LoadFile(file).Issues);
+    }
+
+    [Fact]
+    public void RepositoryPathsAreExplicitExistingAbsoluteAndUnique()
+    {
+        var project = ProjectConfigurationService.Create("Example", root);
+        project.Repositories = [root, root + Path.DirectorySeparatorChar, "relative", Path.Combine(root, "missing"), null!];
+        var issues = service.Validate(project);
+        Assert.Contains(issues, x => x.Path == "repositories[1]");
+        Assert.Contains(issues, x => x.Path == "repositories[2]");
+        Assert.Contains(issues, x => x.Path == "repositories[3]");
+        Assert.Contains(issues, x => x.Path == "repositories[4]");
+        Assert.NotEmpty(service.Save(project));
+        project.Repositories = null!;
+        Assert.Contains(service.Validate(project), x => x.Path == "repositories");
+    }
+
+    [Fact]
     public void MissingActionsAndNullDescriptionAreReported()
     {
         var missing = Path.Combine(root, "missing.json");

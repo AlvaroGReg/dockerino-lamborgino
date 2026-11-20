@@ -139,6 +139,29 @@ public sealed class ProjectConfigurationService
         Id(project.Id, "id");
         Required(project.Name, "name");
         DirectoryPath(project.Directory, "directory");
+        if (project.Repositories is null) issues.Add(new("repositories", "An array is required."));
+        else
+        {
+            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int r = 0; r < project.Repositories.Count; r++)
+            {
+                var value = project.Repositories[r];
+                string path = $"repositories[{r}]";
+                DirectoryPath(value, path);
+                if (!string.IsNullOrWhiteSpace(value) && Path.IsPathFullyQualified(value))
+                {
+                    try
+                    {
+                        if (!paths.Add(Path.TrimEndingDirectorySeparator(Path.GetFullPath(value))))
+                            issues.Add(new(path, "Repository paths must be unique within a project."));
+                    }
+                    catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+                    {
+                        issues.Add(new(path, "A valid absolute directory is required."));
+                    }
+                }
+            }
+        }
         if (project.Actions is null) { issues.Add(new("actions", "An array is required.")); return issues; }
         for (int a = 0; a < project.Actions.Count; a++)
         {

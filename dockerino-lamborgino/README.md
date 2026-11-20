@@ -1,8 +1,8 @@
 # dockerino-lamborgino
 
-Windows desktop application targeting .NET 10. Phase 3 provides project
-registration and manual configuration through the UI and CLI. Git operations
-and execution of saved launch configurations are not yet implemented.
+Windows desktop application targeting .NET 10. Project registration, manual
+configuration, and explicitly requested Git operations are available through
+the UI and CLI. Execution of saved launch configurations is not yet implemented.
 The application uses WPF's built-in Fluent theme and follows the Windows
 light/dark setting; the terminal retains its own dark background.
 
@@ -28,8 +28,10 @@ portion of the example below. `[]` saves a project without actions. Select
 project and **Edit selected** to change it later. Validation and storage
 errors appear in the window; a conflicting edit must be reloaded.
 
-Actions are displayed by name, color value, and description, but cannot be
-run until Phase 5. Branch operations are not yet available. For isolated
+Enter associated repository roots explicitly as a JSON array of absolute paths;
+these may be outside the project directory. Existing projects default to an
+empty array. Actions are displayed by name, color value, and description, but cannot be
+run until Phase 5. For isolated
 testing, the application accepts `--project-storage <absolute-directory>`;
 this overrides its default project store.
 
@@ -68,6 +70,7 @@ entries, so inspect each entry's `issues`. Exit codes are 0 for success, 1 for
 an operation error, and 2 for invalid CLI syntax.
 
 Each project has a nonempty unique GUID `id`, `name`, existing absolute `directory`, and an
+optional `repositories` array of distinct existing absolute directory paths, and an
 `actions` array. Each action has a unique GUID `id`, `name`, `color` in
 `#RRGGBB` format, optional `description`, and a nonempty `processes` array.
 Each process has a unique GUID `id`, `name`, existing absolute
@@ -89,6 +92,7 @@ can have this shape (replace IDs and paths with your own):
   "id": "c9bd5995-661e-4b7e-b243-e3e5cd8dc250",
   "name": "Example",
   "directory": "C:\\My Projects\\Example",
+  "repositories": ["C:\\My Projects\\Example", "C:\\Other\\Repository"],
   "actions": [{
     "id": "3c7cf820-40c6-49fa-8ef9-27037c9e243d",
     "name": "Development",
@@ -108,6 +112,34 @@ can have this shape (replace IDs and paths with your own):
 }
 ```
 
+## Repository operations
+
+Use **Manage Git…** to select a saved project, inspect its associated
+repositories and their working-tree status, and switch a single local or
+remote branch. Select one or more repositories for explicit fetch or
+fast-forward-only pull. Results are reported individually. Repository paths
+must identify working-tree roots, not directories inside another repository.
+Projects without valid Git repositories remain available for configuration.
+
+The CLI accepts the exact associated paths returned by `get`:
+
+```powershell
+dotnet run --project .\src\DockerinoLamborgino.Cli -- git status $projectId
+dotnet run --project .\src\DockerinoLamborgino.Cli -- git switch $projectId "C:\My Projects\Example" local main
+dotnet run --project .\src\DockerinoLamborgino.Cli -- git switch $projectId "C:\My Projects\Example" remote origin/feature
+dotnet run --project .\src\DockerinoLamborgino.Cli -- git fetch $projectId "C:\My Projects\Example" "C:\Other\Repository"
+dotnet run --project .\src\DockerinoLamborgino.Cli -- git pull $projectId "C:\My Projects\Example"
+```
+
+Fetch uses the current branch's upstream remote or, if there is no upstream,
+the sole configured remote. Pull requires an upstream and refuses divergence;
+its fetch may nevertheless update remote-tracking references. Neither operation
+runs automatically. No stash, reset, commit, push, or merge is requested.
+Git uses the user's configured credentials; terminal prompts are disabled and
+interactive authentication is not supported by this integration. Configure
+noninteractive credentials or authenticate separately before retrying. Git
+itself and user-configured helpers or hooks are not sandboxed.
+
 New terminal sessions start PowerShell; the session list is in memory only.
 Hiding the menu or collapsing the window does not intentionally stop a session.
 Stop terminates only the selected session's owned Job Object. Exiting the app
@@ -122,4 +154,5 @@ airspace limitations and the upstream control relies on beta APIs. Review the
 full dependency and license graph before distribution.
 
 See [PHASE-2-EVIDENCE.md](PHASE-2-EVIDENCE.md) for Phase 2 results, user
-observations, and evidence limitations.
+observations, and evidence limitations, and [PHASE-4-EVIDENCE.md](PHASE-4-EVIDENCE.md)
+for Git verification and outstanding acceptance.

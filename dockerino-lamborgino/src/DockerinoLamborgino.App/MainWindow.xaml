@@ -27,7 +27,7 @@
                             <Button Content="Manage projects…" Click="ManageProjects_Click" Padding="7,4"/>
                             <Separator Margin="0,10"/>
                             <TextBlock Text="BRANCH" FontWeight="Bold" Margin="0,0,0,4"/>
-                            <TextBlock Text="Branch selection is not available yet." TextWrapping="Wrap"/>
+                            <Button Content="Manage Git…" Click="ManageGit_Click" Padding="7,4"/>
                             <Separator Margin="0,10"/>
                             <TextBlock Text="COMMANDS" FontWeight="Bold" Margin="0,0,0,4"/>
                             <TextBlock Text="Launch actions are not available yet." TextWrapping="Wrap"/>

@@ -23,6 +23,11 @@
                     <Button DockPanel.Dock="Right" Content="Browse…" Click="Browse_Click" Margin="6,0,0,0" Padding="8,3"/>
                     <TextBox x:Name="DirectoryBox"/>
                 </DockPanel>
+                <TextBlock Text="Associated repository paths (JSON array)" FontWeight="Bold"/>
+                <TextBlock Text="Enter explicit absolute directory paths, including outside the project. No repositories are discovered automatically."
+                           TextWrapping="Wrap" Margin="0,4,0,3"/>
+                <TextBox x:Name="RepositoriesBox" AcceptsReturn="True" Height="65" VerticalScrollBarVisibility="Auto"
+                         FontFamily="Consolas" AutomationProperties.Name="Associated repository paths JSON"/>
                 <TextBlock Text="Actions (JSON array)" FontWeight="Bold"/>
                 <TextBlock Text="Enter an array of actions. Each action has id, name, color (#RRGGBB), description and processes; each process has id, name, workingDirectory and steps; each step has id, command and optional dependsOnSuccessOf (an earlier step ID). IDs are unique GUIDs. Saving never runs commands."
                            TextWrapping="Wrap" Margin="0,4,0,6"/>

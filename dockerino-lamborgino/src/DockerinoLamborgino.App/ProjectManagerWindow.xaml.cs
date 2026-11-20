@@ -16,6 +16,7 @@ public partial class ProjectManagerWindow : Window
         RefreshProjects();
         DirectoryBox.Text = directory ?? "";
         ConfigurationBox.Text = "[]";
+        RepositoriesBox.Text = "[]";
     }
 
     private void RefreshProjects()
@@ -43,6 +44,7 @@ public partial class ProjectManagerWindow : Window
         NameBox.Clear();
         DirectoryBox.Text = dialog.FolderName;
         ConfigurationBox.Text = "[]";
+        RepositoriesBox.Text = "[]";
         ProjectsList.SelectedItem = null;
     }
 
@@ -63,16 +65,18 @@ public partial class ProjectManagerWindow : Window
             NameBox.Text = draft.Name;
             DirectoryBox.Text = draft.Directory;
             ConfigurationBox.Text = draft.ConfigurationJson;
+            RepositoriesBox.Text = draft.RepositoriesJson;
         }
         catch (Exception ex) { ErrorsBox.Text = ex.Message; }
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        var draft = new ProjectConfigurationDraft(projectId, revision, NameBox.Text, DirectoryBox.Text, ConfigurationBox.Text);
+        var draft = new ProjectConfigurationDraft(projectId, revision, NameBox.Text, DirectoryBox.Text, ConfigurationBox.Text, RepositoriesBox.Text);
         try
         {
             using var json = JsonDocument.Parse(draft.ConfigurationJson);
+            using var repositories = JsonDocument.Parse(draft.RepositoriesJson);
             var review = new Window
             {
                 Owner = this, Title = "Review before saving", Width = 650, Height = 500,
@@ -89,7 +93,7 @@ public partial class ProjectManagerWindow : Window
             panel.Children.Add(buttons);
             panel.Children.Add(new System.Windows.Controls.TextBox
             {
-                Text = $"Name: {draft.Name}\nDirectory: {draft.Directory}\n\n{draft.ConfigurationJson}",
+                Text = $"Name: {draft.Name}\nDirectory: {draft.Directory}\n\nRepositories:\n{draft.RepositoriesJson}\n\nActions:\n{draft.ConfigurationJson}",
                 IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
                 VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
             });
@@ -107,6 +111,7 @@ public partial class ProjectManagerWindow : Window
             NameBox.Text = saved.Name;
             DirectoryBox.Text = saved.Directory;
             ConfigurationBox.Text = saved.ConfigurationJson;
+            RepositoriesBox.Text = saved.RepositoriesJson;
             RefreshProjects();
             if (string.IsNullOrEmpty(ErrorsBox.Text)) ErrorsBox.Text = "Configuration saved.";
         }

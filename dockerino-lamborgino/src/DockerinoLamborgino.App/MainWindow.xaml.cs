@@ -45,6 +45,9 @@ public partial class MainWindow : Window
     private void ManageProjects_Click(object sender, RoutedEventArgs e) =>
         new ProjectManagerWindow(projectConfigurations) { Owner = this }.ShowDialog();
 
+    private void ManageGit_Click(object sender, RoutedEventArgs e) =>
+        new GitWindow(projectConfigurations, new CoreGitWindowAdapter(projectConfigurations)) { Owner = this }.ShowDialog();
+
     private void NewSession_Click(object sender, RoutedEventArgs e)
     {
         var view = new TerminalSessionView { Visibility = Visibility.Collapsed };
