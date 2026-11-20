@@ -40,7 +40,7 @@ remaining evidence limitations are in
 - Add a floating menu for projects, current branch, commands, and terminal sessions.
 - Integrate interactive terminal views and allow sessions to be opened or reselected from the menu.
 - Keep sessions alive when the menu is collapsed or closed. Closing the application stops its sessions and their owned process trees; detached Docker containers require separate explicit management.
-- Create a domain/backend layer for sessions and projects shared by the UI and CLI. Every application action must be available through the CLI so an AI agent can use the same supported operations as the UI.
+- Create a domain/backend layer for sessions and projects shared by the UI and CLI. Supported project, configuration, Git, launch, and terminal-session operations must be available through the CLI. Floating-launcher interactions are UI-only, except opening or activating the dashboard, which must have a CLI equivalent; see [D5](decisiones.md#d5-cli-parity-for-application-actions).
 
 ## Phase 3: project registration and manual launch configuration
 
@@ -79,15 +79,55 @@ remain in later phases.
 
 - Run saved launch configurations in integrated interactive ConPTY terminals.
 - Expose launch, status, and session-management operations through the CLI as well as the UI, using managed project, action, and session identifiers.
+- The CLI can start the application if it is not running, without showing the dashboard; only the floating launcher is visible. Launch requests return asynchronously with managed launch and session identifiers, without waiting for process completion.
+- Provide CLI operations to list and inspect launches and sessions, inspect step results, stop a session or a complete launch, retrieve accumulated terminal output, and follow output live. Retain CLI project creation and launch configuration operations.
+- CLI-started sessions share the UI-started sessions' application lifetime. On application exit, warn when terminal sessions will be terminated and stop them regardless of how they were started.
 - Present user-configured, named launch actions with their chosen colors. Support multiple launch types without providing two fixed default actions or assigning fixed meanings to colors.
-- Support configurable numbers of processes and sessions, independent parallel sessions, and sequential steps within a session.
-- Support steps conditional on a previous step's successful exit; on failure, keep output visible, skip dependent steps, and allow independent sessions to continue.
+- Each configured process opens its own interactive terminal session. Processes are independent and can run in parallel; steps within a process run sequentially, each waiting for the previous step to finish. Steps do not need to share shell context.
+- If a step fails, keep output visible and skip all later steps in that process; independent processes continue. Permit indefinitely running steps even though they block later steps in the same process; the user is responsible for that configuration.
+- Adapt the existing optional `dependsOnSuccessOf` configuration model to these semantics; decide how to handle existing saved configurations before implementation.
 - Run only the selected action's configured commands. Make configured descriptions and known effects visible regardless of color.
 - Show progress/status, prevent duplicate clicks during the operation, and retain useful diagnostic output.
 - Validate the selected configuration's working directories, commands, required tools, shell, and terminal components; identify missing components without assuming specific tools are needed by every project.
 
+The floating-launcher and dashboard behavior above is a target for CLI startup;
+the current Phase 2 skeleton is not the final launcher design. Phase 6 still
+covers the visual design and application of the full launcher interaction.
+
 ## Phase 6: visual design and application
 
+- **Preliminary UI direction from the user; not yet a finalized design or
+  implementation specification:**
+  - Keep a small semicircular launcher attached to a screen edge and always
+    on top. Hovering expands it slightly, exposing an application-exit `X` and
+    enough area to click or drag.
+  - Dragging the launcher moves it along the screen edge. Clicking it opens or
+    brings the dashboard window to the foreground. Use standard Windows
+    pointer behavior to distinguish a click from a drag.
+  - The launcher can be moved between monitors and placed on either side of
+    the boundary between screens. Remember its position between application
+    sessions. Its default position is the top center of the system's primary
+    display. Support all four edges of every monitor, placing the launcher
+    within the usable work area so it does not overlap the taskbar.
+  - The dashboard window behaves like a standard application window: it is not
+    always on top and may be covered, minimized, or hidden when another
+    application receives focus. The launcher remains visible and can bring the
+    dashboard back.
+  - Closing the dashboard window does not exit the application or stop its
+    terminal sessions. Exiting the application is available from the launcher,
+    not the dashboard window's close button, and terminates the terminal
+    sessions. Warn the user before exiting when terminal sessions will be
+    terminated; a small confirmation dialog offering cancel or confirm is
+    sufficient.
+  - Do not design touch interactions. The floating launcher itself (including
+    its placement and exit interaction) does not need CLI operations. Opening
+    or activating the dashboard does need a CLI equivalent to clicking the
+    launcher.
+  - This is a UI direction for Phase 6 only. The current Phase 2 skeleton's
+    always-on-top window behavior must not be treated as the final interaction
+    model. Preserve existing project, configuration, and session behavior
+    unless a separate decision changes it.
+- Touch interaction is out of scope.
 - Produce a visual design for the application UI and review it with the user
   before implementation.
 - Resolve and reflect the dashboard/navigation and empty-state questions in
@@ -103,8 +143,8 @@ remain in later phases.
 - Test paths with spaces, invalid paths, incomplete projects, and terminal creation/resize/interaction failures.
 - Test Docker with the daemon available and unavailable, attached and detached Compose, client interruption, stopping the test project, and volume preservation.
 - Test branch switching with a clean tree and rejection/warnings with local changes.
-- Test configurations with different structures and process counts, parallel sessions, sequential steps, and successful and failed prerequisites. Verify that unconfigured commands never run.
-- Verify that every user-visible application action is available through the CLI with equivalent validation and behavior.
+- Test configurations with different structures and process counts, parallel sessions, sequential steps, and successful and failed steps. Verify that unconfigured commands never run.
+- Verify CLI parity for supported project, configuration, Git, launch, and terminal-session operations, and verify that opening or activating the dashboard has a CLI equivalent. Floating-launcher placement and application exit remain UI-only.
 - Use the [WEBS-CMS example](examples/webs-cms.md) as a real test case, including success and failure of its optional update sequence; assess its effects before executing the update.
 - Test creating, editing, saving, and launching multiple action types with different selected colors; verify labels distinguish actions independently of color.
 - Document installation, execution, project registration, manual launch configuration, and CLI operations for users and AI agents.
@@ -119,12 +159,12 @@ remain in later phases.
 4. A local branch can be selected without the app discarding local changes.
 5. A launch opens the configured number of integrated, interactive terminals associated with isolated sessions, using its saved commands and directories.
 6. Each launch action runs only its configured commands; commands absent from that action never run implicitly.
-7. Configured independent sessions can run in parallel; sequential steps execute in order, and a failed prerequisite prevents success-dependent steps without stopping independent sessions.
+7. Configured processes have their own terminal sessions and can run in parallel; steps execute sequentially, and a failed step skips all later steps in its process without stopping independent processes.
 8. The user receives an actionable message when commands, paths, or terminal components are missing.
 9. Terminal sessions remain accessible when the menu is collapsed; users can interact with them in the application and stop them individually without affecting unrelated processes.
 10. Users can configure multiple named launch types and select from several colors for each; names distinguish actions independently of color. Known effects can be explained for the relevant action.
 11. Local and remote branches are distinguished; selecting a remote branch without an existing local branch creates a local tracking branch without separate confirmation. Explicit fetch and fast-forward-only pull support individual and selected repositories.
-12. Every application action available in the UI is available through the CLI, so an AI agent can inspect project guidance under user direction and carry out supported operations using the same application behavior and validation.
+12. Supported project, configuration, Git, launch, and terminal-session operations are available through the CLI with equivalent behavior and validation. Opening or activating the dashboard also has a CLI equivalent; floating-launcher placement and application exit are UI-only.
 
 The [WEBS-CMS example](examples/webs-cms.md) is one acceptance test fixture, including its 11 observed repositories and optional three-session update workflow. It does not limit the projects, commands, or number of sessions supported by the MVP.
 

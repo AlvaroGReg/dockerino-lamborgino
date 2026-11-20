@@ -64,7 +64,23 @@ Do not scan child directories to discover projects. Store the project name, path
 
 ### D5. CLI parity for application actions
 
-**Decision:** every action available in the application must also be available through its CLI so AI agents can use the application's supported capabilities. The UI and CLI share the same domain/backend behavior and validation. The CLI supports project and launch-configuration management, Git operations, launching configured actions, and managed terminal-session operations. Use managed identifiers; never accept arbitrary PIDs or run commands that are not explicitly configured.
+**Decision:** every supported project, configuration, Git, launch, and managed terminal-session action must also be available through the CLI so AI agents can use the application's capabilities. The UI and CLI share the same domain/backend behavior and validation. Use managed identifiers; never accept arbitrary PIDs or run commands that are not explicitly configured.
+
+**UI-shell exception:** interactions that control the floating launcher itself (such as moving it or exiting the application from it) do not need CLI operations. Opening or activating the dashboard window must have a CLI equivalent. This exception does not remove CLI parity for project, launch, or terminal-session operations.
+
+For launches, the CLI can start the application when it is not running. When
+started this way, the dashboard is not shown; only the floating launcher is
+visible. A launch request returns asynchronously with managed launch and
+session identifiers rather than waiting for the processes to exit. The CLI
+can list and inspect launches and sessions, inspect step results, stop an
+individual session or a complete launch, and both retrieve accumulated output
+and follow output live. Project creation and launch configuration remain
+available through the CLI.
+
+Sessions started through the CLI have the same ownership and lifetime as
+sessions started through the UI. Exiting the application stops them and warns
+the user when terminal sessions will be terminated. The CLI does not make
+sessions survive application exit.
 
 ### D6. Operate Git in explicitly associated repositories
 
@@ -99,9 +115,9 @@ Do not expose `taskkill` or a generic PID-based operation to the UI/CLI. Testing
 
 ### D9. Configurable launch types with explicit semantics
 
-**Decision:** users can configure multiple named launch types per project, their commands and working directories, and a color for each action. A launch can contain different numbers of processes, run independent sessions in parallel, and sequence commands within a session with later steps conditional on an earlier exit code. Persist these settings and run only the selected action's configured commands. Do not create two fixed default actions or assign fixed meanings to colors.
+**Decision:** users can configure multiple named launch types per project, their commands and working directories, and a color for each action. A launch can contain different numbers of processes. Each process opens its own interactive terminal session; processes are independent and can run in parallel. Within a process, steps run in order and each waits for the previous step to finish. If a step fails, all later steps in that process are skipped, while other processes continue. Steps do not need to share shell context. A command that runs indefinitely can therefore block subsequent steps; the user is allowed to configure this and is responsible for the resulting wait. Persist these settings and run only the selected action's configured commands. Do not create two fixed default actions or assign fixed meanings to colors.
 
-Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures; when a prerequisite fails, do not run steps configured to depend on its success, while independent sessions can continue. The [WEBS-CMS example](examples/webs-cms.md) exercises these general capabilities.
+Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures. The [WEBS-CMS example](examples/webs-cms.md) exercises these general capabilities.
 
 ### D10. Explicit command effects
 
