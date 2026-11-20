@@ -103,13 +103,12 @@ covers the visual design and application of the full launcher interaction.
 
 ## Phase 6: visual design and application
 
-**Status: implementation in progress; design review and manual acceptance are
-outstanding.** The proposed dark dashboard uses a muted turquoise accent,
-keeps saved projects accessible in the sidebar, and shows a welcome state
-instead of an empty terminal before a session is selected. Implementation and
-verification limitations are tracked in
-[Phase 6 evidence](dockerino-lamborgino/PHASE-6-EVIDENCE.md). The design has
-not yet been approved by the user.
+**Status: the earlier Phase 6 iteration was manually verified by user report.
+The latest requested navigation and terminal-tab revision is implemented but
+still needs manual verification; explicit design acceptance has not been
+separately stated.** Implementation and verification evidence and its
+limitations are tracked in
+[Phase 6 evidence](dockerino-lamborgino/PHASE-6-EVIDENCE.md).
 
 - **Preliminary UI direction from the user; not yet a finalized design or
   implementation specification:**
@@ -149,7 +148,10 @@ not yet been approved by the user.
   that design, including access to the saved-project list from the initial
   view and whether an empty terminal should be shown before a session exists.
 - Apply the accepted design to the WPF application, keeping existing project,
-  configuration, and session behavior intact.
+  configuration, and session behavior intact. The latest requested proposal
+  uses a project-list column and a selected-project tools column; the terminal
+  panel appears only after a launch or opening a new terminal, with closable
+  session tabs and a final add-tab button.
 - Verify the updated UI manually and with appropriate UI tests; record the
   design decisions and implementation evidence.
 

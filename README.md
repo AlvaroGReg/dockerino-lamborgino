@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/dockerino-lamborgino-icon.svg" alt="Dockerino Lamborgino icon" width="128">
+</p>
+
 # dockerino-lamborgino
 
 ## Purpose

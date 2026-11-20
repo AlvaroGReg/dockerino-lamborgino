@@ -4,9 +4,13 @@ Windows desktop application targeting .NET 10. Project registration, manual
 configuration, and explicitly requested Git operations are available through
 the UI and CLI. Phase 5 launch execution is under development and has not yet
 been accepted; see the limitations below.
-The dashboard uses a dark, muted-turquoise visual treatment; configuration
-dialogs use WPF's system theme. The Phase 6 design and interaction still need
-user review and manual verification.
+The dashboard uses a dark, muted-turquoise visual treatment, with a project
+list with new-terminal/add-project actions, selected-project tools shown only
+after selection, and terminal tabs shown when sessions exist. The window
+resizes to match the visible sections. Configuration dialogs use WPF's system
+theme. The latest navigation and terminal-tab revision still needs manual
+verification. The shared turquoise
+half-disc mark is used for the executable, dashboard window, and floating launcher.
 
 ## Build and run
 
@@ -116,8 +120,11 @@ can have this shape (replace IDs and paths with your own):
 
 ## Launches: initial Phase 5 implementation
 
-Select a project and one of its saved actions in the main window, then choose
-**Run selected action**. Each process uses a separate PowerShell 7 terminal.
+Select a project in the first column and click one of its configured launch
+actions in the project-tools column. The terminal panel appears when the launch
+creates sessions. Each process uses a separate PowerShell 7 terminal; session
+tabs can be selected or closed (closing stops that session), and `+` opens a
+new terminal tab.
 The CLI communicates with the running application via a current-user named
 pipe. If needed, it starts the application with the dashboard hidden.
 Set `DOCKERINO_APP_PATH` to the absolute path of the application executable if
@@ -147,8 +154,8 @@ complete per-step progress or launch controls, and environment validation does
 not identify all required tools before execution. PowerShell compound commands
 may not produce an unambiguous step exit status. Physical keyboard interaction,
 exit confirmation, live following and the complete UI/CLI workflow still need
-independent verification. Phase 6 launcher and dashboard behavior also require
-manual verification; see [Phase 6 evidence](PHASE-6-EVIDENCE.md).
+independent verification. See [Phase 6 evidence](PHASE-6-EVIDENCE.md) for the
+user's manual verification report.
 
 ## Repository operations
 

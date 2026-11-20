@@ -2,18 +2,32 @@
 
 ## Proposed design
 
-The launcher is a minimal edge-attached semicircle with a restrained turquoise
-glow. The dashboard uses dark surfaces, muted turquoise accents, and a separate
-title bar. Saved projects are accessible immediately through the sidebar;
-before selecting a session, a welcome message replaces an empty terminal.
-Action colors remain user-configured and are not assigned fixed meanings.
-Configuration and Git dialogs retain the system theme.
+The launcher is a small edge-attached semicircle with a restrained turquoise
+glow, a centered marker, and an exit control between the marker and the screen
+edge. The dashboard uses dark surfaces, muted turquoise accents, and a separate
+title bar. Its first column lists saved projects, a subdued new-terminal action,
+and an add-project action. The project-tools column stays hidden until a project
+is selected. The terminal panel stays hidden until a launch or new terminal is
+opened, and takes the next available space without a blank column. Active
+sessions appear as tabs with a close control that stops that session, followed
+by a button to open another terminal. The dashboard width animates to match the
+visible columns and shrinks when the project is deselected or the last terminal
+tab is closed. Action colors remain user-configured and are not assigned fixed
+meanings. Configuration and Git dialogs retain the system theme.
 
-This design is implemented as a proposal in response to the requested
-direction, but has not been reviewed or accepted by the user.
+This is the latest requested UI revision. It has not yet received manual
+verification; the historic checks below refer to the prior dashboard layout.
+
+This design was implemented in response to the requested direction. The user
+subsequently reported that all requested verifications were positive; explicit
+acceptance of the design was not separately stated.
 
 ## Automated checks
 
+- Latest navigation/terminal-tab iteration: isolated Debug solution build
+  succeeded with 0 warnings and 0 errors; all 39 Core and 1 Terminal tests
+  passed. The build used a separate temporary output path because a running app
+  instance was locking the normal Debug output.
 - `dotnet test DockerinoLamborgino.sln --no-restore`: 39 Core tests and one
   Terminal test passed. These do not cover the new launcher interaction.
 - Release application build succeeded with no warnings.
@@ -26,10 +40,13 @@ direction, but has not been reviewed or accepted by the user.
 - The normal Debug build could not replace its executable because an existing
   application instance held it open. That instance was not interrupted.
 
-## Verification still needed
+## User-reported manual verification
 
-Manual checks are required for the visual design, physical pointer and keyboard
-interaction, multi-monitor placement (including mixed DPI and taskbars),
-position persistence, close/hide/restore, and exit confirmation with live
-sessions. Existing Phase 5 limitations remain; this document does not imply
-acceptance of those behaviors.
+On 2026-11-21, the user reported that all requested verifications were
+completed successfully. The previously requested checks covered visual
+appearance, physical interaction, multi-monitor placement, position
+persistence, close/hide/restore, and exit confirmation with active sessions.
+The report did not provide individual test setups or results.
+
+Existing Phase 5 limitations remain; this report does not imply acceptance of
+that phase.

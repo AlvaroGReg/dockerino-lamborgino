@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False"
-        Topmost="True" SizeToContent="Manual" Title="Project launcher">
+        Topmost="True" SizeToContent="Manual" Title="Project launcher"
+        Icon="/DockerinoLamborgino.App;component/Assets/dockerino-lamborgino-icon.png">
     <Grid x:Name="Surface" Background="Transparent"
           MouseEnter="Surface_MouseEnter" MouseLeave="Surface_MouseLeave"
           MouseLeftButtonDown="Surface_MouseLeftButtonDown"
@@ -15,8 +16,9 @@
             </Path.Effect>
         </Path>
         <Path x:Name="Body" IsHitTestVisible="False" Fill="#E82E6968" Stroke="#FF76B4AD" StrokeThickness="1" />
-        <TextBlock x:Name="Marker" Text="●" Foreground="#FFD0E7DF" FontSize="8"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+        <Image x:Name="Marker" Source="/DockerinoLamborgino.App;component/Assets/dockerino-lamborgino-icon.png"
+               Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Center"
+               VerticalAlignment="Center" IsHitTestVisible="False" />
         <Button x:Name="ExitButton" Content="×" ToolTip="Exit application"
                 AutomationProperties.Name="Exit application"
                 Width="16" Height="16" Padding="0" FontSize="12" FontWeight="SemiBold"

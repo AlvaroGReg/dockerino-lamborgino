@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="dockerino-lamborgino" Width="260" Height="720" MinWidth="250" MinHeight="460"
         WindowStyle="None" ResizeMode="CanResize" Background="#101A1D" Foreground="#D9E8E6"
+        Icon="/DockerinoLamborgino.App;component/Assets/dockerino-lamborgino-icon.png"
         WindowStartupLocation="CenterScreen">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="0"/>
