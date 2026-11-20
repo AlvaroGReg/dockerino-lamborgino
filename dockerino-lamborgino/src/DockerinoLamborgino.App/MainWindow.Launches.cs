@@ -9,20 +9,6 @@ public partial class MainWindow
     private readonly LocalCommandServer commandServer;
     private readonly Dictionary<Guid, TerminalSessionView> managedViews = [];
 
-    private void Launch_Click(object sender, RoutedEventArgs e)
-    {
-        if (LaunchProjects.SelectedItem is not ProjectConfiguration project ||
-            LaunchActions.SelectedItem is not LaunchAction action) return;
-        LaunchButton.IsEnabled = false;
-        try
-        {
-            var launch = StartLaunch(project.Id, action.Id);
-            StatusText.Text = $"Launch {launch.Id} started.";
-        }
-        catch (Exception ex) { StatusText.Text = ex.Message; }
-        finally { LaunchButton.IsEnabled = true; }
-    }
-
     private ManagedLaunchInfo StartLaunch(Guid projectId, Guid actionId)
     {
         var loaded = configurationService.Get(projectId);
@@ -109,6 +95,7 @@ public partial class MainWindow
                     if (window.SessionsList.SelectedItem == item) window.StatusText.Text = status;
                 };
                 window.SessionsList.SelectedItem = item;
+                window.ShowTerminalPanel();
                 return new WindowLaunchSession(view, request.WorkingDirectory);
             }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken);
     }

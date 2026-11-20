@@ -1,19 +1,24 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using DockerinoLamborgino.Core;
 
 namespace DockerinoLamborgino.App;
 
 public partial class MainWindow : Window
 {
+    private const double ProjectColumnWidth = 258;
+    private const double ToolsColumnWidth = 310;
+    private const double TerminalColumnWidth = 600;
     private readonly SessionRegistry registry = new();
-    private readonly ShellState shellState = new();
     private readonly ObservableCollection<SessionItem> sessions = [];
+    private readonly ObservableCollection<ProjectConfiguration> projects = [];
     private readonly IProjectConfigurationAdapter projectConfigurations;
     private readonly ProjectConfigurationService configurationService;
     private readonly LauncherWindow launcher;
     private bool exiting;
+    private int resizeVersion;
 
     public MainWindow()
     {
@@ -33,9 +38,9 @@ public partial class MainWindow : Window
         launchOrchestrator = new LaunchOrchestrator(new WindowSessionFactory(this));
         commandServer = new LocalCommandServer(DispatchCommandAsync);
         commandServer.Start();
-        shellState.ToggleMenu();
         SessionsList.ItemsSource = sessions;
-        RefreshLaunchProjects();
+        ProjectsList.ItemsSource = projects;
+        RefreshProjects();
         launcher = new LauncherWindow();
         launcher.OpenRequested += ShowDashboard;
         launcher.ExitRequested += ExitApplication;
@@ -75,42 +80,60 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             new ProjectManagerWindow(projectConfigurations, dialog.FolderName) { Owner = this }.ShowDialog();
-            RefreshLaunchProjects();
+            RefreshProjects();
         }
     }
 
     private void ManageProjects_Click(object sender, RoutedEventArgs e)
     {
         new ProjectManagerWindow(projectConfigurations) { Owner = this }.ShowDialog();
-        RefreshLaunchProjects();
+        RefreshProjects((ProjectsList.SelectedItem as ProjectConfiguration)?.Id);
     }
 
-    private void RefreshLaunchProjects()
+    private void RefreshProjects(Guid? preferredId = null)
     {
-        var selected = (LaunchProjects.SelectedItem as ProjectConfiguration)?.Id;
-        var projects = configurationService.List().Where(r => r.Project is not null && r.Issues.Count == 0)
+        var selectedId = preferredId ?? (ProjectsList.SelectedItem as ProjectConfiguration)?.Id;
+        var loaded = configurationService.List().Where(r => r.Project is not null && r.Issues.Count == 0)
             .Select(r => r.Project!).ToArray();
-        LaunchProjects.ItemsSource = projects;
-        LaunchProjects.SelectedItem = projects.FirstOrDefault(p => p.Id == selected) ?? projects.FirstOrDefault();
+        projects.Clear();
+        foreach (var project in loaded) projects.Add(project);
+        ProjectsList.SelectedItem = projects.FirstOrDefault(p => p.Id == selectedId);
+        UpdateProjectDetails();
     }
 
-    private void LaunchProjects_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void ProjectsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        LaunchActions.ItemsSource = (LaunchProjects.SelectedItem as ProjectConfiguration)?.Actions;
-        LaunchActions.SelectedIndex = LaunchActions.Items.Count > 0 ? 0 : -1;
+        UpdateProjectDetails();
     }
 
-    private void LaunchActions_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void ProjectsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        var action = LaunchActions.SelectedItem as LaunchAction;
-        LaunchDescription.Text = action is null ? "" : $"{action.Name} ({action.Color})\n{action.Description}";
-        LaunchButton.IsEnabled = action is not null;
-        LaunchButton.Background = action is null ? null :
-            (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(action.Color)!;
+        if (e.OriginalSource is not DependencyObject source ||
+            System.Windows.Controls.ItemsControl.ContainerFromElement(ProjectsList, source) is not System.Windows.Controls.ListBoxItem item ||
+            !item.IsSelected) return;
+
+        ProjectsList.SelectedItem = null;
+        e.Handled = true;
     }
 
-    private void ManageGit_Click(object sender, RoutedEventArgs e) =>
-        new GitWindow(projectConfigurations, new CoreGitWindowAdapter(projectConfigurations)) { Owner = this }.ShowDialog();
+    private void UpdateProjectDetails()
+    {
+        var project = ProjectsList.SelectedItem as ProjectConfiguration;
+        SelectedProjectName.Text = project?.Name ?? "Select a project";
+        SelectedProjectPath.Text = project?.Directory ?? "";
+        EditProjectButton.IsEnabled = GitButton.IsEnabled = project is not null;
+        LaunchActionsList.ItemsSource = project?.Actions;
+        NoActionsText.Visibility = project is null || project.Actions.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        LaunchDescription.Text = project is null ? "" : $"{project.Actions.Count} launch action(s) configured.";
+        if (project is null) StatusText.Text = "Choose a project to see its tools.";
+        UpdateColumns();
+    }
+
+    private void ManageGit_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProjectsList.SelectedItem is not ProjectConfiguration project) return;
+        new GitWindow(projectConfigurations, new CoreGitWindowAdapter(projectConfigurations), project.Id.ToString()) { Owner = this }.ShowDialog();
+    }
 
     private void NewSession_Click(object sender, RoutedEventArgs e)
     {
@@ -144,6 +167,7 @@ public partial class MainWindow : Window
             if (SessionsList.SelectedItem == item) StatusText.Text = status;
         };
         SessionsList.SelectedItem = item;
+        ShowTerminalPanel();
     }
 
     private void SessionsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -151,32 +175,104 @@ public partial class MainWindow : Window
         var selected = SessionsList.SelectedItem as SessionItem;
         foreach (var item in sessions)
             item.View.Visibility = item == selected ? Visibility.Visible : Visibility.Collapsed;
-        EmptyText.Visibility = selected is null ? Visibility.Visible : Visibility.Collapsed;
         if (selected is null) return;
         if (registry.List().Any(s => s.Id == selected.Id))
             registry.Select(selected.Id);
         StatusText.Text = selected.View.Status;
     }
 
-    private async void StopSession_Click(object sender, RoutedEventArgs e)
+    private void RunAction_Click(object sender, RoutedEventArgs e)
     {
-        if (SessionsList.SelectedItem is not SessionItem item) return;
+        if (ProjectsList.SelectedItem is not ProjectConfiguration project ||
+            (sender as System.Windows.Controls.Button)?.Tag is not LaunchAction action) return;
+        try
+        {
+            var launch = StartLaunch(project.Id, action.Id);
+            StatusText.Text = $"Launch {action.Name} started.";
+            ShowTerminalPanel();
+        }
+        catch (Exception ex) { StatusText.Text = ex.Message; }
+    }
+
+    private void LaunchActionButton_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button || button.Tag is not LaunchAction action) return;
+        try
+        {
+            button.Background = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter()
+                .ConvertFromString(action.Color)!;
+        }
+        catch (FormatException) { button.Background = System.Windows.Media.Brushes.DarkSlateGray; }
+    }
+
+    private async void CloseSessionTab_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as System.Windows.Controls.Button)?.Tag is not SessionItem item) return;
+        var wasSelected = SessionsList.SelectedItem == item;
         if (managedViews.ContainsKey(item.Id))
         {
             try { await launchOrchestrator.StopSessionAsync(item.Id); }
             catch (Exception ex) { StatusText.Text = ex.Message; }
-            return;
+            managedViews.Remove(item.Id);
         }
-        var result = registry.Stop(item.Id);
-        if (result.Error is not null) StatusText.Text = result.Error;
+        else
+        {
+            var result = registry.Stop(item.Id);
+            if (result.Error is not null) StatusText.Text = result.Error;
+        }
+        sessions.Remove(item);
+        TerminalHost.Children.Remove(item.View);
+        if (wasSelected) SessionsList.SelectedItem = sessions.LastOrDefault();
+        UpdateTerminalPanel();
     }
 
-    private void Menu_Click(object sender, RoutedEventArgs e)
+    private void UpdateTerminalPanel()
     {
-        shellState.ToggleMenu();
-        MenuPanel.Visibility = shellState.IsMenuVisible ? Visibility.Visible : Visibility.Collapsed;
-        MenuColumn.Width = shellState.IsMenuVisible ? new GridLength(260) : new GridLength(0);
-        MenuButton.Content = shellState.IsMenuVisible ? "Hide menu" : "Show menu";
+        UpdateColumns();
+    }
+
+    private void UpdateColumns()
+    {
+        var hasSessions = sessions.Count > 0;
+        var hasProject = ProjectsList.SelectedItem is ProjectConfiguration;
+        ProjectToolsColumn.Width = hasProject ? new GridLength(ToolsColumnWidth) : new GridLength(0);
+        TerminalColumn.Width = hasSessions ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        TerminalPanel.Visibility = hasSessions ? Visibility.Visible : Visibility.Collapsed;
+        var targetWidth = ProjectColumnWidth + (hasProject ? ToolsColumnWidth : 0) +
+                          (hasSessions ? TerminalColumnWidth : 0) + 2;
+        ResizeWindow(targetWidth);
+    }
+
+    private void ShowTerminalPanel() => UpdateColumns();
+
+    private void ResizeWindow(double targetWidth)
+    {
+        targetWidth = Math.Min(targetWidth, SystemParameters.WorkArea.Width);
+        var currentWidth = ActualWidth > 0 ? ActualWidth : Width;
+        if (Math.Abs(currentWidth - targetWidth) < 1) return;
+
+        BeginAnimation(WidthProperty, null);
+        Width = currentWidth;
+        if (IsLoaded)
+        {
+            var workArea = SystemParameters.WorkArea;
+            if (Left < workArea.Left) Left = workArea.Left;
+            if (Left + targetWidth > workArea.Right)
+                Left = Math.Max(workArea.Left, workArea.Right - targetWidth);
+        }
+
+        var version = ++resizeVersion;
+        var animation = new DoubleAnimation(currentWidth, targetWidth, TimeSpan.FromMilliseconds(220))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        animation.Completed += (_, _) =>
+        {
+            if (version != resizeVersion) return;
+            BeginAnimation(WidthProperty, null);
+            Width = targetWidth;
+        };
+        BeginAnimation(WidthProperty, animation, HandoffBehavior.SnapshotAndReplace);
     }
 
     private void ShowDashboard()
@@ -212,7 +308,7 @@ public partial class MainWindow : Window
     {
         public Guid Id { get; } = id;
         public TerminalSessionView View { get; } = view;
+        public string Name { get; } = name;
         public string Status { get; set; } = "Starting";
-        public string Label => $"{name} — {Status}";
     }
 }

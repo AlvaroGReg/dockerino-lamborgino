@@ -77,7 +77,7 @@ public partial class GitWindow : Window
     private bool busy;
     private bool updating;
 
-    public GitWindow(IProjectConfigurationAdapter projects, IGitWindowAdapter git)
+    public GitWindow(IProjectConfigurationAdapter projects, IGitWindowAdapter git, string? selectedProjectId = null)
     {
         this.git = git;
         InitializeComponent();
@@ -85,6 +85,7 @@ public partial class GitWindow : Window
         {
             var result = projects.List();
             Projects.ItemsSource = result.Projects;
+            Projects.SelectedItem = result.Projects.FirstOrDefault(project => project.Id == selectedProjectId);
             Results.Text = string.Join(Environment.NewLine, result.Errors);
         }
         catch (Exception ex) { Results.Text = ex.Message; }

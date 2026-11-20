@@ -11,8 +11,8 @@ namespace DockerinoLamborgino.App;
 /// <summary>A floating shell. The host owns dashboard activation and application shutdown.</summary>
 public partial class LauncherWindow : Window
 {
-    private const double LongSide = 104;
-    private const double ShortSide = 52;
+    private const double LongSide = 64;
+    private const double ShortSide = 34;
     private readonly string positionFile;
     private LauncherPosition position = new("", LauncherEdge.Top, 0.5);
     private NativePoint pressPoint;
@@ -109,13 +109,25 @@ public partial class LauncherWindow : Window
         // A half ellipse whose straight side lies on the selected work-area edge.
         var geometry = edge switch
         {
-            LauncherEdge.Top => "M 4,0 L 100,0 C 100,28 79,48 52,48 C 25,48 4,28 4,0 Z",
-            LauncherEdge.Bottom => "M 4,52 L 100,52 C 100,24 79,4 52,4 C 25,4 4,24 4,52 Z",
-            LauncherEdge.Left => "M 0,4 L 0,100 C 28,100 48,79 48,52 C 48,25 28,4 0,4 Z",
-            _ => "M 52,4 L 52,100 C 24,100 4,79 4,52 C 4,25 24,4 52,4 Z"
+            LauncherEdge.Top => "M 2,0 L 62,0 C 62,18 49,31 32,31 C 15,31 2,18 2,0 Z",
+            LauncherEdge.Bottom => "M 2,34 L 62,34 C 62,16 49,3 32,3 C 15,3 2,16 2,34 Z",
+            LauncherEdge.Left => "M 0,2 L 0,62 C 18,62 31,49 31,32 C 31,15 18,2 0,2 Z",
+            _ => "M 34,2 L 34,62 C 16,62 3,49 3,32 C 3,15 16,2 34,2 Z"
         };
         Body.Data = Geometry.Parse(geometry);
         Glow.Data = Body.Data;
+        ExitButton.HorizontalAlignment = edge switch
+        {
+            LauncherEdge.Left => HorizontalAlignment.Left,
+            LauncherEdge.Right => HorizontalAlignment.Right,
+            _ => HorizontalAlignment.Center
+        };
+        ExitButton.VerticalAlignment = edge switch
+        {
+            LauncherEdge.Top => VerticalAlignment.Top,
+            LauncherEdge.Bottom => VerticalAlignment.Bottom,
+            _ => VerticalAlignment.Center
+        };
         SetExpanded(Surface.IsMouseOver);
     }
 
