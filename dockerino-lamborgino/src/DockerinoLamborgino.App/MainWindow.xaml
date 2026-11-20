@@ -24,7 +24,8 @@
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top">
                             <TextBlock Text="PROJECTS" FontWeight="Bold" Margin="0,0,0,4"/>
-                            <TextBlock Text="Project search is not available yet." TextWrapping="Wrap" Foreground="#BBBBBB"/>
+                            <Button Content="Find project…" Click="FindProject_Click" Padding="7,4" Margin="0,0,0,4"/>
+                            <Button Content="Manage projects…" Click="ManageProjects_Click" Padding="7,4"/>
                             <Separator Margin="0,10"/>
                             <TextBlock Text="BRANCH" FontWeight="Bold" Margin="0,0,0,4"/>
                             <TextBlock Text="Branch selection is not available yet." TextWrapping="Wrap" Foreground="#BBBBBB"/>

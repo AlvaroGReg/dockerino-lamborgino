@@ -44,6 +44,12 @@ remaining evidence limitations are in
 
 ## Phase 3: project registration and manual launch configuration
 
+**Status: implemented, automatically verified, and accepted by the user.**
+The WPF editor and CLI use the shared configuration service. See
+[Phase 3 evidence](dockerino-lamborgino/PHASE-3-EVIDENCE.md) for the checks
+and their limitations. Git branch selection and execution of saved launches
+remain in later phases.
+
 - Start with an empty list of saved projects.
 - Provide a **Find project** action that lets the user select one project directory. Register only that directory; do not scan its children or automatically discover projects.
 - Create and edit project and launch configurations manually in the UI or through the CLI. Do not infer project structure, working directories, commands, launch types, or other configuration from files.

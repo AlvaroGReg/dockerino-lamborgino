@@ -75,6 +75,10 @@ The smoke script checks application-reported state, not terminal content.
 
 ## User-reported manual checks
 
+On 2026-11-20, the user additionally confirmed that Phase 2 had been visually
+verified. This confirmation does not identify individual scenarios beyond the
+observations recorded below.
+
 On 2026-11-20, the user reported creating consoles, running basic and
 long-running processes, stopping consoles, and closing the application. The user
 reported npm and Docker working, and that Docker did not stop when the console

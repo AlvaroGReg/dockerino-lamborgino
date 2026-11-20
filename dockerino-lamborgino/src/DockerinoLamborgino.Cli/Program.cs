@@ -1,0 +1,60 @@
+using System.Text.Json;
+using DockerinoLamborgino.Core;
+
+namespace DockerinoLamborgino.Cli;
+
+public static class Program
+{
+    public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
+
+    public static int Run(string[] args, TextWriter output, TextWriter error, string? storageDirectory = null)
+    {
+        var service = new ProjectConfigurationService(storageDirectory);
+        void Print(object value) => output.WriteLine(JsonSerializer.Serialize(value, ProjectConfigurationService.JsonOptions));
+        try
+        {
+            switch (args)
+            {
+                case ["list"]:
+                    Print(service.List());
+                    return 0;
+                case ["get", var id] when Guid.TryParse(id, out var projectId) && projectId != Guid.Empty:
+                    var result = service.Get(projectId);
+                    Print(result);
+                    return result.Project is null || result.Issues.Count != 0 ? 1 : 0;
+                case ["register", var name, var directory]:
+                    var project = ProjectConfigurationService.Create(name, directory);
+                    var registrationIssues = service.Save(project);
+                    if (registrationIssues.Count > 0) { Print(registrationIssues); return 1; }
+                    Print(service.Get(project.Id));
+                    return 0;
+                case ["validate", var file]:
+                    var loaded = service.LoadFile(file);
+                    Print(loaded);
+                    return loaded.Issues.Count == 0 ? 0 : 1;
+                case ["save", var file]:
+                    return Save(file, null);
+                case ["save", var file, var revision]:
+                    return Save(file, revision);
+                default:
+                    error.WriteLine("Usage: list | get <id> | register <name> <absolute-directory> | validate <json-file> | save <json-file> [expected-revision]");
+                    return 2;
+            }
+
+            int Save(string file, string? revision)
+            {
+                var loaded = service.LoadFile(file);
+                if (loaded.Project is null || loaded.Issues.Count != 0) { Print(loaded); return 1; }
+                var issues = service.Save(loaded.Project, revision);
+                if (issues.Count != 0) { Print(issues); return 1; }
+                Print(service.Get(loaded.Project.Id));
+                return 0;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            error.WriteLine(ex.Message);
+            return 1;
+        }
+    }
+}

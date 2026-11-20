@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/DockerinoLamborgino.Core/DockerinoLamborgino.Core.csproj" />
+    <ProjectReference Include="../../src/DockerinoLamborgino.Cli/DockerinoLamborgino.Cli.csproj" />
   </ItemGroup>
 </Project>

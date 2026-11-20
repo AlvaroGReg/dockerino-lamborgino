@@ -10,11 +10,21 @@ public partial class MainWindow : Window
     private readonly SessionRegistry registry = new();
     private readonly ShellState shellState = new();
     private readonly ObservableCollection<SessionItem> sessions = [];
+    private readonly IProjectConfigurationAdapter projectConfigurations;
     private double expandedWidth;
     private double expandedHeight;
 
     public MainWindow()
     {
+        var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
+        string? storage = null;
+        if (args.Length != 0)
+        {
+            if (args.Length != 2 || args[0] != "--project-storage" || !System.IO.Path.IsPathFullyQualified(args[1]))
+                throw new ArgumentException("Usage: --project-storage <absolute directory>");
+            storage = args[1];
+        }
+        projectConfigurations = new CoreProjectConfigurationAdapter(storage);
         InitializeComponent();
         shellState.ToggleMenu();
         SessionsList.ItemsSource = sessions;
@@ -24,6 +34,16 @@ public partial class MainWindow : Window
                 registry.Stop(item.Id);
         };
     }
+
+    private void FindProject_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select one project directory" };
+        if (dialog.ShowDialog(this) == true)
+            new ProjectManagerWindow(projectConfigurations, dialog.FolderName) { Owner = this }.ShowDialog();
+    }
+
+    private void ManageProjects_Click(object sender, RoutedEventArgs e) =>
+        new ProjectManagerWindow(projectConfigurations) { Owner = this }.ShowDialog();
 
     private void NewSession_Click(object sender, RoutedEventArgs e)
     {
