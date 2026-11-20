@@ -117,6 +117,12 @@ Do not expose `taskkill` or a generic PID-based operation to the UI/CLI. Testing
 
 **Decision:** users can configure multiple named launch types per project, their commands and working directories, and a color for each action. A launch can contain different numbers of processes. Each process opens its own interactive terminal session; processes are independent and can run in parallel. Within a process, steps run in order and each waits for the previous step to finish. If a step fails, all later steps in that process are skipped, while other processes continue. Steps do not need to share shell context. A command that runs indefinitely can therefore block subsequent steps; the user is allowed to configure this and is responsible for the resulting wait. Persist these settings and run only the selected action's configured commands. Do not create two fixed default actions or assign fixed meanings to colors.
 
+Existing saved `dependsOnSuccessOf` values remain valid when they refer to an
+earlier step in the same process. No migration is required: the dependency is
+redundant under the fail-fast rule, because every earlier step must succeed
+before a later step runs. This also means that a failure skips later steps even
+when they have no explicit dependency.
+
 Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures. The [WEBS-CMS example](examples/webs-cms.md) exercises these general capabilities.
 
 ### D10. Explicit command effects

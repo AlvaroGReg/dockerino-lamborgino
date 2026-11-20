@@ -8,7 +8,7 @@ namespace DockerinoLamborgino.App;
 public sealed record ProjectConfigurationDraft(string? Id, string? Revision, string Name, string Directory, string ConfigurationJson, string RepositoriesJson = "[]");
 public sealed record ProjectActionEntry(string Name, string Color, string Description)
 {
-    public string Label => $"{Name} — {Color} — {Description} (not executable until Phase 5)";
+    public string Label => $"{Name} — {Color} — {Description}";
 }
 public sealed record ProjectConfigurationEntry(string Id, string Name, string Directory, IReadOnlyList<ProjectActionEntry> Actions);
 public sealed record ProjectConfigurationList(IReadOnlyList<ProjectConfigurationEntry> Projects, IReadOnlyList<string> Errors);

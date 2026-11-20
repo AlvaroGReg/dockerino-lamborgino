@@ -49,6 +49,22 @@ public sealed class ProjectConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void ExistingNonAdjacentDependencySurvivesRoundTrip()
+    {
+        var project = ProjectConfigurationService.Create("Example", root);
+        var first = new LaunchStep { Id = Guid.NewGuid(), Command = "first" };
+        var middle = new LaunchStep { Id = Guid.NewGuid(), Command = "middle" };
+        var last = new LaunchStep { Id = Guid.NewGuid(), Command = "last", DependsOnSuccessOf = first.Id };
+        project.Actions.Add(new LaunchAction { Id = Guid.NewGuid(), Name = "Run", Color = "#AABBCC",
+            Processes = [new LaunchProcess { Id = Guid.NewGuid(), Name = "shell", WorkingDirectory = root,
+                Steps = [first, middle, last] }] });
+        Assert.Empty(service.Save(project));
+        var loaded = service.Get(project.Id);
+        Assert.Empty(loaded.Issues);
+        Assert.Equal(first.Id, loaded.Project!.Actions[0].Processes[0].Steps[2].DependsOnSuccessOf);
+    }
+
+    [Fact]
     public void DamagedProjectDoesNotHideOthers()
     {
         var project = ProjectConfigurationService.Create("Valid", root);

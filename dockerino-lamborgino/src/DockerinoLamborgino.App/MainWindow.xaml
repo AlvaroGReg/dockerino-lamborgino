@@ -71,7 +71,12 @@
                             <Button Content="Manage Git…" Click="ManageGit_Click"/>
                             <Separator Margin="0,14" Background="#29413F"/>
                             <TextBlock Text="LAUNCH CONFIGURATION" Style="{StaticResource SectionLabel}"/>
-                            <TextBlock Text="Launch actions are not available yet." TextWrapping="Wrap"/>
+                            <ComboBox x:Name="LaunchProjects" SelectionChanged="LaunchProjects_SelectionChanged"
+                                      DisplayMemberPath="Name" Margin="0,0,0,6" AutomationProperties.Name="Launch project"/>
+                            <ComboBox x:Name="LaunchActions" SelectionChanged="LaunchActions_SelectionChanged"
+                                      DisplayMemberPath="Name" Margin="0,0,0,6" AutomationProperties.Name="Launch action"/>
+                            <TextBlock x:Name="LaunchDescription" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                            <Button x:Name="LaunchButton" Content="Run selected action" Click="Launch_Click" IsEnabled="False"/>
                             <Separator Margin="0,14" Background="#29413F"/>
                             <TextBlock Text="SESSIONS" Style="{StaticResource SectionLabel}"/>
                             <StackPanel Orientation="Horizontal">

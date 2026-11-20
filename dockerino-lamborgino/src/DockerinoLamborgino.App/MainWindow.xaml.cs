@@ -11,6 +11,7 @@ public partial class MainWindow : Window
     private readonly ShellState shellState = new();
     private readonly ObservableCollection<SessionItem> sessions = [];
     private readonly IProjectConfigurationAdapter projectConfigurations;
+    private readonly ProjectConfigurationService configurationService;
     private readonly LauncherWindow launcher;
     private bool exiting;
 
@@ -27,9 +28,14 @@ public partial class MainWindow : Window
             else throw new ArgumentException("Usage: [--launcher-only] [--project-storage <absolute directory>]");
         }
         projectConfigurations = new CoreProjectConfigurationAdapter(storage);
+        configurationService = new ProjectConfigurationService(storage);
         InitializeComponent();
+        launchOrchestrator = new LaunchOrchestrator(new WindowSessionFactory(this));
+        commandServer = new LocalCommandServer(DispatchCommandAsync);
+        commandServer.Start();
         shellState.ToggleMenu();
         SessionsList.ItemsSource = sessions;
+        RefreshLaunchProjects();
         launcher = new LauncherWindow();
         launcher.OpenRequested += ShowDashboard;
         launcher.ExitRequested += ExitApplication;
@@ -43,7 +49,9 @@ public partial class MainWindow : Window
                 Hide();
                 return;
             }
-            if (registry.List().Any(s => s.State is SessionState.Starting or SessionState.Running or SessionState.Stopping) &&
+            if ((registry.List().Any(s => s.State is SessionState.Starting or SessionState.Running or SessionState.Stopping) ||
+                managedViews.Values.Any(v => v.State is TerminalSessionState.Starting or TerminalSessionState.Running) ||
+                launchOrchestrator.List().Any(l => l.State == ManagedLaunchState.Running)) &&
                 MessageBox.Show(this, "Exiting will terminate running terminal sessions. Continue?",
                     "Exit dockerino-lamborgino", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
@@ -54,7 +62,9 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             foreach (var item in sessions)
-                registry.Stop(item.Id);
+                if (managedViews.TryGetValue(item.Id, out var view)) view.Stop();
+                else registry.Stop(item.Id);
+            _ = commandServer.DisposeAsync();
             launcher.Close();
         };
     }
@@ -63,11 +73,41 @@ public partial class MainWindow : Window
     {
         var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select one project directory" };
         if (dialog.ShowDialog(this) == true)
+        {
             new ProjectManagerWindow(projectConfigurations, dialog.FolderName) { Owner = this }.ShowDialog();
+            RefreshLaunchProjects();
+        }
     }
 
-    private void ManageProjects_Click(object sender, RoutedEventArgs e) =>
+    private void ManageProjects_Click(object sender, RoutedEventArgs e)
+    {
         new ProjectManagerWindow(projectConfigurations) { Owner = this }.ShowDialog();
+        RefreshLaunchProjects();
+    }
+
+    private void RefreshLaunchProjects()
+    {
+        var selected = (LaunchProjects.SelectedItem as ProjectConfiguration)?.Id;
+        var projects = configurationService.List().Where(r => r.Project is not null && r.Issues.Count == 0)
+            .Select(r => r.Project!).ToArray();
+        LaunchProjects.ItemsSource = projects;
+        LaunchProjects.SelectedItem = projects.FirstOrDefault(p => p.Id == selected) ?? projects.FirstOrDefault();
+    }
+
+    private void LaunchProjects_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        LaunchActions.ItemsSource = (LaunchProjects.SelectedItem as ProjectConfiguration)?.Actions;
+        LaunchActions.SelectedIndex = LaunchActions.Items.Count > 0 ? 0 : -1;
+    }
+
+    private void LaunchActions_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var action = LaunchActions.SelectedItem as LaunchAction;
+        LaunchDescription.Text = action is null ? "" : $"{action.Name} ({action.Color})\n{action.Description}";
+        LaunchButton.IsEnabled = action is not null;
+        LaunchButton.Background = action is null ? null :
+            (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(action.Color)!;
+    }
 
     private void ManageGit_Click(object sender, RoutedEventArgs e) =>
         new GitWindow(projectConfigurations, new CoreGitWindowAdapter(projectConfigurations)) { Owner = this }.ShowDialog();
@@ -113,13 +153,20 @@ public partial class MainWindow : Window
             item.View.Visibility = item == selected ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Visibility = selected is null ? Visibility.Visible : Visibility.Collapsed;
         if (selected is null) return;
-        registry.Select(selected.Id);
+        if (registry.List().Any(s => s.Id == selected.Id))
+            registry.Select(selected.Id);
         StatusText.Text = selected.View.Status;
     }
 
-    private void StopSession_Click(object sender, RoutedEventArgs e)
+    private async void StopSession_Click(object sender, RoutedEventArgs e)
     {
         if (SessionsList.SelectedItem is not SessionItem item) return;
+        if (managedViews.ContainsKey(item.Id))
+        {
+            try { await launchOrchestrator.StopSessionAsync(item.Id); }
+            catch (Exception ex) { StatusText.Text = ex.Message; }
+            return;
+        }
         var result = registry.Stop(item.Id);
         if (result.Error is not null) StatusText.Text = result.Error;
     }

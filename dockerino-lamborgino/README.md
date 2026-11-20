@@ -2,9 +2,11 @@
 
 Windows desktop application targeting .NET 10. Project registration, manual
 configuration, and explicitly requested Git operations are available through
-the UI and CLI. Execution of saved launch configurations is not yet implemented.
-The application uses WPF's built-in Fluent theme and follows the Windows
-light/dark setting; the terminal retains its own dark background.
+the UI and CLI. Phase 5 launch execution is under development and has not yet
+been accepted; see the limitations below.
+The dashboard uses a dark, muted-turquoise visual treatment; configuration
+dialogs use WPF's system theme. The Phase 6 design and interaction still need
+user review and manual verification.
 
 ## Build and run
 
@@ -30,8 +32,7 @@ errors appear in the window; a conflicting edit must be reloaded.
 
 Enter associated repository roots explicitly as a JSON array of absolute paths;
 these may be outside the project directory. Existing projects default to an
-empty array. Actions are displayed by name, color value, and description, but cannot be
-run until Phase 5. For isolated
+empty array. Actions are displayed by name, color value, and description. For isolated
 testing, the application accepts `--project-storage <absolute-directory>`;
 this overrides its default project store.
 
@@ -76,8 +77,9 @@ optional `repositories` array of distinct existing absolute directory paths, and
 Each process has a unique GUID `id`, `name`, existing absolute
 `workingDirectory`, and a nonempty `steps` array. Each step has a unique GUID
 `id`, a `command`, and optional `dependsOnSuccessOf`, which must refer to an
-earlier step in that process. Array order records the intended order; execution
-and dependency handling are not implemented yet. Generate IDs explicitly
+earlier step in that process. Steps run in array order and a failure skips all
+later steps, whether or not they declare a dependency. Existing dependencies
+remain valid and need no migration. Generate IDs explicitly
 (for example, with `[guid]::NewGuid()` in PowerShell); IDs must be unique
 within the project. The configuration may contain no actions.
 Names and commands must not be blank. A description may be omitted but cannot
@@ -111,6 +113,42 @@ can have this shape (replace IDs and paths with your own):
   }]
 }
 ```
+
+## Launches: initial Phase 5 implementation
+
+Select a project and one of its saved actions in the main window, then choose
+**Run selected action**. Each process uses a separate PowerShell 7 terminal.
+The CLI communicates with the running application via a current-user named
+pipe. If needed, it starts the application with the dashboard hidden.
+Set `DOCKERINO_APP_PATH` to the absolute path of the application executable if
+it is not beside the CLI executable. For isolated instances, set the same
+`DOCKERINO_PIPE_NAME` in both processes.
+
+```powershell
+dockerino-cli launch start <project-id> <action-id>
+dockerino-cli launch list
+dockerino-cli launch inspect <launch-id>
+dockerino-cli launch stop <launch-id>
+dockerino-cli session list
+dockerino-cli session inspect <session-id>
+dockerino-cli session output <session-id>
+dockerino-cli session follow <session-id>
+dockerino-cli session stop <session-id>
+dockerino-cli dashboard open
+```
+
+Use the actual CLI executable path in place of `dockerino-cli`. Launches and
+sessions are kept in memory for the application lifetime. Output includes raw
+terminal control sequences and is retained in memory. Stopping a session does
+not stop detached Docker containers.
+
+**Limitations:** Phase 5 remains in progress. The UI does not yet present
+complete per-step progress or launch controls, and environment validation does
+not identify all required tools before execution. PowerShell compound commands
+may not produce an unambiguous step exit status. Physical keyboard interaction,
+exit confirmation, live following and the complete UI/CLI workflow still need
+independent verification. Phase 6 launcher and dashboard behavior also require
+manual verification; see [Phase 6 evidence](PHASE-6-EVIDENCE.md).
 
 ## Repository operations
 

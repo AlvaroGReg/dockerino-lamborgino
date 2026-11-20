@@ -23,6 +23,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     private readonly EasyTerminalControl _terminal = new();
     private readonly object _outputLock = new();
     private readonly StringBuilder _earlyOutput = new();
+    private readonly StringBuilder _output = new();
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private GuardedFactory? _factory;
@@ -33,6 +34,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     private bool _connected;
     private bool _started;
     private bool _isStopped;
+    private TerminalCommandSequence? _sequence;
 
     public TerminalSessionView()
     {
@@ -47,6 +49,32 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     public string Status { get; private set; } = "Ready";
     public TerminalSessionState? State { get; private set; }
     public int? ExitCode { get; private set; }
+    /// <summary>All terminal output received so far, including terminal control sequences.</summary>
+    public string Output { get { lock (_outputLock) return _output.ToString(); } }
+
+    /// <summary>
+    /// Configures a single PowerShell session before Start. Results are reported on
+    /// the dispatcher; execution stops after the first nonzero result.
+    /// </summary>
+    public void ConfigureCommands(IEnumerable<string> commands, string workingDirectory)
+    {
+        Dispatcher.VerifyAccess();
+        if (_started || _isStopped || _sequence is not null)
+            throw new InvalidOperationException("The session is already configured or started.");
+        ArgumentNullException.ThrowIfNull(commands);
+        ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
+        var steps = commands.ToArray();
+        if (steps.Length == 0 || steps.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("At least one nonempty command is required.", nameof(commands));
+        var sequence = new TerminalCommandSequence(steps);
+        _sequence = sequence;
+        _terminal.WorkingDirectory = workingDirectory;
+        _terminal.StartupCommandLine = sequence.CommandLine;
+    }
+
+    /// <summary>Completes with executed step results, including the first failure, or faults if the channel fails.</summary>
+    public Task<IReadOnlyList<int>>? CommandResults => _sequence?.Completion;
+    public event Action<int, int>? CommandCompleted;
 
     public void Start()
     {
@@ -71,6 +99,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
             {
                 lock (_outputLock)
                 {
+                    _output.Append(output);
                     if (!_connected)
                     {
                         _earlyOutput.Append(output);
@@ -81,6 +110,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
             term.TermReady += (_, _) => _ready.TrySetResult();
             var command = _terminal.StartupCommandLine;
             var directory = _terminal.WorkingDirectory;
+            if (_sequence is not null) _ = ObserveCommandsAsync(_sequence);
             var run = Task.Run(() => term.Start(command, logOutput: true, factory: factory, workingDirectory: directory));
             _run = run;
             // Observe errors even if Stop or the timeout wins the race.
@@ -120,6 +150,20 @@ public sealed class TerminalSessionView : UserControl, IDisposable
         catch (Exception exception)
         {
             if (!_isStopped) Finish(TerminalSessionState.Failed, $"Terminal failed: {exception.Message}");
+        }
+    }
+
+    private async Task ObserveCommandsAsync(TerminalCommandSequence sequence)
+    {
+        try
+        {
+            await sequence.ReadResultsAsync((index, code) => Dispatcher.InvokeAsync(() =>
+                CommandCompleted?.Invoke(index, code)).Task);
+        }
+        catch (Exception exception)
+        {
+            sequence.Fail(exception);
+            if (!_isStopped) Finish(TerminalSessionState.Failed, $"Command sequence failed: {exception.Message}");
         }
     }
 
@@ -178,6 +222,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
         if (_isStopped) return;
         _isStopped = true;
         _stopped.TrySetResult();
+        _sequence?.Stop();
         _timer?.Stop();
         if (_window is not null) _window.Closed -= OnWindowClosed;
         Loaded -= OnLoaded;

@@ -38,8 +38,10 @@ public static class Program
                     return Save(file, revision);
                 case ["git", ..]:
                     return GitCommands.Run(args[1..], service, output, error);
+                case ["launch" or "session" or "dashboard", ..]:
+                    return LocalCommands.Run(args, output, error);
                 default:
-                    error.WriteLine("Usage: list | get <id> | register <name> <absolute-directory> | validate <json-file> | save <json-file> [expected-revision] | git status|switch|fetch|pull ...");
+                    error.WriteLine("Usage: list | get <id> | register <name> <absolute-directory> | validate <json-file> | save <json-file> [expected-revision] | git ... | launch start|list|inspect|stop ... | session list|inspect|stop|output|follow ... | dashboard open");
                     return 2;
             }
 

@@ -77,6 +77,13 @@ remain in later phases.
 
 ## Phase 5: configurable launches
 
+**Status: in progress; not yet accepted.** An initial UI/CLI launch path and
+in-memory coordinator have been added. Automated and isolated integration
+checks do not yet establish all requirements, including physical terminal
+interaction, exit-warning behavior, full validation and UI progress reporting.
+See [Phase 5 evidence](dockerino-lamborgino/PHASE-5-EVIDENCE.md) and
+[the application README](dockerino-lamborgino/README.md) for current limitations.
+
 - Run saved launch configurations in integrated interactive ConPTY terminals.
 - Expose launch, status, and session-management operations through the CLI as well as the UI, using managed project, action, and session identifiers.
 - The CLI can start the application if it is not running, without showing the dashboard; only the floating launcher is visible. Launch requests return asynchronously with managed launch and session identifiers, without waiting for process completion.

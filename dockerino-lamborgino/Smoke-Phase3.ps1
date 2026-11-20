@@ -123,7 +123,7 @@ try {
     Set-Value (By-Id $manager 'ConfigurationBox') $actions
     Save-Draft $manager
     Select-Project $manager 'Phase3 original'
-    $label = By-Name (By-Id $manager 'ActionsList') 'Marker action — #123456 — Must not execute (not executable until Phase 5)'
+    $label = By-Name (By-Id $manager 'ActionsList') 'Marker action — #123456 — Must not execute'
     if (-not $label) { throw 'Saved action not displayed.' }
     Click (By-Name $manager 'Edit selected')
     Set-Value (By-Id $manager 'NameBox') 'Phase3 edited'

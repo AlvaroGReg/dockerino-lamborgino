@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace DockerinoLamborgino.Core;
 
 // Array order defines execution order. Each process is an independent session;
-// a step may depend on the success of an earlier step in that same session.
+// every earlier step must succeed; an optional explicit earlier-step dependency
+// is retained for compatibility with previously saved configurations.
 public sealed class ProjectConfiguration
 {
     public Guid Id { get; set; }

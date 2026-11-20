@@ -14,9 +14,6 @@ direction, but has not been reviewed or accepted by the user.
 
 ## Automated checks
 
-These historical checks were performed with the Phase 5 work also present in
-the working tree; they do not independently verify this UI-only commit.
-
 - `dotnet test DockerinoLamborgino.sln --no-restore`: 39 Core tests and one
   Terminal test passed. These do not cover the new launcher interaction.
 - Release application build succeeded with no warnings.
