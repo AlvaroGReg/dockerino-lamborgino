@@ -81,7 +81,19 @@ remain in later phases.
 - Show progress/status, prevent duplicate clicks during the operation, and retain useful diagnostic output.
 - Validate the selected configuration's working directories, commands, required tools, shell, and terminal components; identify missing components without assuming specific tools are needed by every project.
 
-## Phase 6: hardening and delivery
+## Phase 6: visual design and application
+
+- Produce a visual design for the application UI and review it with the user
+  before implementation.
+- Resolve and reflect the dashboard/navigation and empty-state questions in
+  that design, including access to the saved-project list from the initial
+  view and whether an empty terminal should be shown before a session exists.
+- Apply the accepted design to the WPF application, keeping existing project,
+  configuration, and session behavior intact.
+- Verify the updated UI manually and with appropriate UI tests; record the
+  design decisions and implementation evidence.
+
+## Phase 7: hardening and delivery
 
 - Test paths with spaces, invalid paths, incomplete projects, and terminal creation/resize/interaction failures.
 - Test Docker with the daemon available and unavailable, attached and detached Compose, client interruption, stopping the test project, and volume preservation.
