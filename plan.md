@@ -96,6 +96,14 @@ covers the visual design and application of the full launcher interaction.
 
 ## Phase 6: visual design and application
 
+**Status: implementation in progress; design review and manual acceptance are
+outstanding.** The proposed dark dashboard uses a muted turquoise accent,
+keeps saved projects accessible in the sidebar, and shows a welcome state
+instead of an empty terminal before a session is selected. Implementation and
+verification limitations are tracked in
+[Phase 6 evidence](dockerino-lamborgino/PHASE-6-EVIDENCE.md). The design has
+not yet been approved by the user.
+
 - **Preliminary UI direction from the user; not yet a finalized design or
   implementation specification:**
   - Keep a small semicircular launcher attached to a screen edge and always

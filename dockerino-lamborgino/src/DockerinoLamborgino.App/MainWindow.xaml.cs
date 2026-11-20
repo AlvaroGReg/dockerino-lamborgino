@@ -11,27 +11,51 @@ public partial class MainWindow : Window
     private readonly ShellState shellState = new();
     private readonly ObservableCollection<SessionItem> sessions = [];
     private readonly IProjectConfigurationAdapter projectConfigurations;
-    private double expandedWidth;
-    private double expandedHeight;
+    private readonly LauncherWindow launcher;
+    private bool exiting;
 
     public MainWindow()
     {
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         string? storage = null;
-        if (args.Length != 0)
+        bool launcherOnly = false;
+        for (var i = 0; i < args.Length; i++)
         {
-            if (args.Length != 2 || args[0] != "--project-storage" || !System.IO.Path.IsPathFullyQualified(args[1]))
-                throw new ArgumentException("Usage: --project-storage <absolute directory>");
-            storage = args[1];
+            if (args[i] == "--launcher-only" && !launcherOnly) launcherOnly = true;
+            else if (args[i] == "--project-storage" && storage is null && i + 1 < args.Length &&
+                     System.IO.Path.IsPathFullyQualified(args[i + 1])) storage = args[++i];
+            else throw new ArgumentException("Usage: [--launcher-only] [--project-storage <absolute directory>]");
         }
         projectConfigurations = new CoreProjectConfigurationAdapter(storage);
         InitializeComponent();
         shellState.ToggleMenu();
         SessionsList.ItemsSource = sessions;
+        launcher = new LauncherWindow();
+        launcher.OpenRequested += ShowDashboard;
+        launcher.ExitRequested += ExitApplication;
+        launcher.Show();
+        if (launcherOnly) Loaded += (_, _) => Hide();
+        Closing += (_, e) =>
+        {
+            if (!exiting)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+            if (registry.List().Any(s => s.State is SessionState.Starting or SessionState.Running or SessionState.Stopping) &&
+                MessageBox.Show(this, "Exiting will terminate running terminal sessions. Continue?",
+                    "Exit dockerino-lamborgino", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                e.Cancel = true;
+                exiting = false;
+            }
+        };
         Closed += (_, _) =>
         {
             foreach (var item in sessions)
                 registry.Stop(item.Id);
+            launcher.Close();
         };
     }
 
@@ -104,36 +128,27 @@ public partial class MainWindow : Window
     {
         shellState.ToggleMenu();
         MenuPanel.Visibility = shellState.IsMenuVisible ? Visibility.Visible : Visibility.Collapsed;
-        MenuColumn.Width = shellState.IsMenuVisible ? new GridLength(240) : new GridLength(0);
+        MenuColumn.Width = shellState.IsMenuVisible ? new GridLength(260) : new GridLength(0);
         MenuButton.Content = shellState.IsMenuVisible ? "Hide menu" : "Show menu";
     }
 
-    private void Collapse_Click(object sender, RoutedEventArgs e)
+    private void ShowDashboard()
     {
-        shellState.ToggleCollapsed();
-        if (shellState.IsCollapsed)
-        {
-            expandedWidth = Width;
-            expandedHeight = Height;
-            ExpandedContent.Visibility = Visibility.Collapsed;
-            MinWidth = 0;
-            MinHeight = 0;
-            Width = 240;
-            Height = 46;
-            CollapseButton.Content = "Expand";
-        }
-        else
-        {
-            MinWidth = 400;
-            MinHeight = 220;
-            Width = expandedWidth;
-            Height = expandedHeight;
-            ExpandedContent.Visibility = Visibility.Visible;
-            CollapseButton.Content = "Collapse";
-        }
+        Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
     }
 
-    private void Exit_Click(object sender, RoutedEventArgs e) => Close();
+    private void ExitApplication()
+    {
+        exiting = true;
+        Close();
+    }
+
+    private void Hide_Click(object sender, RoutedEventArgs e) => Hide();
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
