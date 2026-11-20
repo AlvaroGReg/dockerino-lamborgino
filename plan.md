@@ -60,15 +60,20 @@ remain in later phases.
 - Enable Git branch operations only for valid Git repositories, and offer only actions present in the saved configuration.
 - Show registration and validation errors without preventing use of other valid projects.
 
-## Phase 4: branch selector
+## Phase 4: repository and branch management
 
-- Query the current branch, local and remote branches, and working-tree status.
-- Expose these Git queries and branch operations through the CLI as well as the UI.
-- Show local and remote branches in visually distinct groups, with distinct icons and a separator (visual reference: the GitHub extension in VS Code).
-- Allow switching to a local branch using `git switch`.
-- Do not automatically stash/reset or synchronize with a remote.
-- Treat selecting a remote branch as an explicit action to create or switch to a local tracking branch; do not implicitly check out a remote branch.
-- Refresh the UI after switching and display Git errors.
+**Status: planned; not yet implemented.** The scope and guardrails are recorded in [D6](decisiones.md#d6-operate-git-in-explicitly-associated-repositories).
+
+- Let users manually associate multiple repository paths with a project through the UI and CLI, including paths outside the project directory. Do not discover repositories automatically. Validate paths and preserve usability of projects without valid repositories.
+- For each associated repository, query its current branch, local and remote branches, and working-tree status. Show local and remote branches in visually distinct groups, with distinct icons and a separator (visual reference: the GitHub extension in VS Code).
+- Switch one repository at a time to an existing local branch using `git switch`, without requesting a merge. Selecting a remote branch creates a local tracking branch when necessary, without a separate confirmation. Do not offer general-purpose branch creation or batch branch switching.
+- Provide explicit fetch and fast-forward-only pull for one or multiple selected repositories. A pull that requires merge or rebase reports the failure without starting either; its fetch may still update remote-tracking references. Continue batch operations after individual failures and report the result for each repository.
+- For fetch, use the current branch's upstream remote; if there is none, use the sole remote when exactly one exists. If no remote exists or multiple remotes are ambiguous, report the problem without guessing. Apply this independently to each repository in a batch. Pull requires the current branch's configured upstream; report an error if it is missing.
+- Show local changes and let Git decide whether an operation is possible. Never automatically stash, reset, resolve conflicts, or synchronize; do not offer commit or push.
+- Reuse the user's Git credential mechanisms without storing credentials in the application. Support or clearly report interactive authentication and failures; verify behavior with the user's Git environment.
+- Refresh displayed repository state after operations, preserve project selection, and show actionable Git errors. Expose the same operations and validation through the CLI.
+
+**Acceptance checks:** exercise multiple manually associated repositories, including an external path and a non-Git project; switching local and remote branches with clean and changed working trees; fast-forward and divergent pulls; batch partial failures; fetch with an upstream remote, a sole remote, no remote, and multiple ambiguous remotes; pull without an upstream; and authentication success and failure. Verify UI/CLI parity and that no unrequested synchronization, merge, stash, reset, commit, or push occurs.
 
 ## Phase 5: configurable launches
 
@@ -110,7 +115,7 @@ remain in later phases.
 
 1. The app starts with no automatically discovered projects; the user can register one explicitly selected project directory and create its configuration manually.
 2. Users can manually enter and edit project paths, working directories, and commands; configurations persist for later use. Registration and saving do not execute commands or infer values from project files.
-3. Selecting a Git-backed project shows its current branch; projects without Git remain usable without branch operations.
+3. Selecting a project shows the current branch of each explicitly associated valid repository; projects without Git remain usable without Git operations.
 4. A local branch can be selected without the app discarding local changes.
 5. A launch opens the configured number of integrated, interactive terminals associated with isolated sessions, using its saved commands and directories.
 6. Each launch action runs only its configured commands; commands absent from that action never run implicitly.
@@ -118,7 +123,7 @@ remain in later phases.
 8. The user receives an actionable message when commands, paths, or terminal components are missing.
 9. Terminal sessions remain accessible when the menu is collapsed; users can interact with them in the application and stop them individually without affecting unrelated processes.
 10. Users can configure multiple named launch types and select from several colors for each; names distinguish actions independently of color. Known effects can be explained for the relevant action.
-11. Local and remote branches are distinguished; selecting a remote requires an explicit local-branch creation action.
+11. Local and remote branches are distinguished; selecting a remote branch without an existing local branch creates a local tracking branch without separate confirmation. Explicit fetch and fast-forward-only pull support individual and selected repositories.
 12. Every application action available in the UI is available through the CLI, so an AI agent can inspect project guidance under user direction and carry out supported operations using the same application behavior and validation.
 
 The [WEBS-CMS example](examples/webs-cms.md) is one acceptance test fixture, including its 11 observed repositories and optional three-session update workflow. It does not limit the projects, commands, or number of sessions supported by the MVP.

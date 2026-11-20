@@ -12,7 +12,7 @@ The desired experience is:
 4. The user selects a named launch action, which runs its configured processes and sequence.
 5. Processes appear as integrated interactive terminal sessions accessible from the floating menu.
 
-The scope is local development. The launcher does not independently deploy, `pull`, install dependencies, or change solution files; explicitly configured commands may have their own effects.
+The scope is local development. The launcher does not independently deploy, synchronize repositories, install dependencies, or change solution files. Users can explicitly request Git operations as described in D6; explicitly configured commands may have their own effects.
 
 ## 2. Feasibility
 
@@ -58,7 +58,7 @@ The menu UI and terminal views can be collapsed or switched without destroying a
 
 Project and launch configurations are created and edited explicitly by the user through the UI or CLI. Do not automatically inspect project files to infer project information, working directories, startup commands, or launch types. Users can configure multiple named launch types, including a chosen color, commands, working directories, parallel or sequential execution, and success-dependent steps. Let the user review configurations before saving, persist them for later use, and allow subsequent editing. Launch actions use saved configuration and never re-infer commands when run. Registration and saving must not execute commands.
 
-An AI agent may inspect a project when directed by the user, following supplied criteria or project guidance such as `AGENTS.md` and `README.md`. The agent can use the CLI to create or edit the requested configuration with the values it determines. This is agent-directed inspection and explicit configuration, not application auto-detection. Git branch operations apply only when the selected project has a valid Git repository; otherwise, the configuration can still be used without a branch selector. Actions are offered only when configured.
+An AI agent may inspect a project when directed by the user, following supplied criteria or project guidance such as `AGENTS.md` and `README.md`. The agent can use the CLI to create or edit the requested configuration with the values it determines. This is agent-directed inspection and explicit configuration, not application auto-detection. Git operations apply only to valid, explicitly associated repositories; a project without one remains usable. Actions are offered only when configured.
 
 Do not scan child directories to discover projects. Store the project name, paths, and commands explicitly provided by the user or an agent acting on the user's instructions. Validate supplied paths and configuration values, and report missing or invalid information rather than inventing values.
 
@@ -66,16 +66,20 @@ Do not scan child directories to discover projects. Store the project name, path
 
 **Decision:** every action available in the application must also be available through its CLI so AI agents can use the application's supported capabilities. The UI and CLI share the same domain/backend behavior and validation. The CLI supports project and launch-configuration management, Git operations, launching configured actions, and managed terminal-session operations. Use managed identifiers; never accept arbitrary PIDs or run commands that are not explicitly configured.
 
-### D6. Operate Git only in the selected repository
+### D6. Operate Git in explicitly associated repositories
 
-**Decision:** use Git CLI in the selected repository root. Show the current branch and list local and remote branches in separate groups with distinct icons and a separator (interaction reference: the GitHub extension in VS Code). Choosing a local branch switches to it; choosing a remote branch must start an explicit action to create or switch to a local tracking branch, not an implicit remote checkout.
+**Decision:** a project can have multiple manually associated repositories, including repositories outside the project directory. Use Git CLI in the explicitly selected repository. Show each repository's current branch and status and list local and remote branches in separate groups with distinct icons and a separator (interaction reference: the GitHub extension in VS Code). Switching is individual, not a batch operation. Choosing a remote branch can explicitly create a local tracking branch when needed; general-purpose branch creation is out of scope.
 
 **Guardrails:**
 
-- Do not automatically run `fetch`, `pull`, `push`, `stash`, commit, or reset.
-- If local changes could block the switch, show the status and let Git reject the operation; never hide changes with an automatic stash.
-- If a branch must be created from a remote branch, ask for confirmation.
-- Update the displayed branch after switching and show Git errors without losing project selection.
+- Run `fetch` and `pull` only on explicit request, individually or for selected repositories. Continue a batch after an individual failure and report each result.
+- For fetch, use the current branch's upstream remote. If there is no upstream remote, use the sole remote when exactly one exists; otherwise report the missing or ambiguous remote without guessing. Apply this rule independently to each repository in a batch. Pull requires a configured upstream.
+- Pull only with fast-forward semantics; if integration requires a merge or rebase, report the failure without starting one. A failed pull may still update remote-tracking references during fetch.
+- Do not run push, stash, commit, reset, or automatic conflict resolution. Do not request a merge when switching branches.
+- Show local changes and let Git accept or reject the operation; never hide changes with an automatic stash.
+- Selecting a remote branch is sufficient authorization to create its local tracking branch when needed; do not ask for separate confirmation. Report naming or tracking conflicts rather than guessing.
+- Reuse the user's Git authentication mechanisms without storing credentials in the application. Handle authentication prompts and failures visibly.
+- Update the displayed state after operations and show Git errors without losing project selection.
 
 ### D7. Integrated interactive terminals with ConPTY
 
@@ -146,7 +150,7 @@ Sessions continue when the menu is collapsed; the terminal view allows continued
 ## 6. Out of scope for the MVP
 
 - Creating, cloning, or deleting repositories.
-- `fetch`, `pull`, `push`, commits, or stash.
+- Push, commits, stash, general-purpose branch creation, and automatic conflict resolution.
 - Selecting Node/.NET versions per project.
 - Installing missing dependencies unless the user explicitly configures a command that does so.
 - Managing environment variables or secrets.
