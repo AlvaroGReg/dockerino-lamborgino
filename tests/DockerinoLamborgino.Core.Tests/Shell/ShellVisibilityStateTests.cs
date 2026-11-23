@@ -3,7 +3,7 @@ using Xunit;
 
 namespace DockerinoLamborgino.Core.Tests;
 
-public class ShellStateTests
+public class ShellVisibilityStateTests
 {
     [Fact]
     public void VisibilityTogglesAreIndependentAndPreserveTheirState()

@@ -5,19 +5,19 @@ using Xunit;
 
 namespace DockerinoLamborgino.Core.Tests;
 
-public sealed class ProjectConfigurationTests : IDisposable
+public sealed class ProjectConfigurationServiceTests : IDisposable
 {
     private readonly string root = Path.Combine(Path.GetTempPath(), "dockerino tests " + Guid.NewGuid());
     private readonly ProjectConfigurationService service;
 
-    public ProjectConfigurationTests()
+    public ProjectConfigurationServiceTests()
     {
         Directory.CreateDirectory(root);
         service = new(Path.Combine(root, "store"));
     }
 
     [Fact]
-    public void EmptyRegisterEditAndConflict()
+    public void RegisterEditAndRejectStaleRevision()
     {
         Assert.Empty(service.List());
         var project = ProjectConfigurationService.Create("Example", root);

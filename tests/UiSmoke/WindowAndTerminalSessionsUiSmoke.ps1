@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
-$exe = Join-Path $PSScriptRoot 'src\DockerinoLamborgino.App\bin\Debug\net10.0-windows\DockerinoLamborgino.App.exe'
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$exe = Join-Path $repoRoot 'src\DockerinoLamborgino.App\bin\Debug\net10.0-windows\DockerinoLamborgino.App.exe'
 if (-not (Test-Path $exe)) { throw "Build Debug first: $exe" }
 $app = Start-Process -FilePath $exe -PassThru
 try {

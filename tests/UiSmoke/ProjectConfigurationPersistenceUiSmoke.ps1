@@ -2,9 +2,10 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 
-$exe = Join-Path $PSScriptRoot 'src\DockerinoLamborgino.App\bin\Debug\net10.0-windows\DockerinoLamborgino.App.exe'
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$exe = Join-Path $repoRoot 'src\DockerinoLamborgino.App\bin\Debug\net10.0-windows\DockerinoLamborgino.App.exe'
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Build Debug first: $exe" }
-$base = Join-Path ([System.IO.Path]::GetTempPath()) ("dockerino-phase3-" + [guid]::NewGuid().ToString('N'))
+$base = Join-Path ([System.IO.Path]::GetTempPath()) ("dockerino-project-configuration-smoke-" + [guid]::NewGuid().ToString('N'))
 $store = Join-Path $base 'store'
 $project = Join-Path $base 'project'
 $marker = Join-Path $base 'command-executed.txt'

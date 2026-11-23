@@ -6,7 +6,7 @@ using Xunit;
 
 namespace DockerinoLamborgino.Terminal.Tests;
 
-public class SessionIsolationTests
+public class ConPtySessionIsolationTests
 {
     [Fact]
     public async Task Stopping_one_conpty_session_leaves_the_other_process_alive()

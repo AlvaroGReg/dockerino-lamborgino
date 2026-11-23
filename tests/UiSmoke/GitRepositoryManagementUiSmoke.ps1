@@ -1,4 +1,4 @@
-# Run with Windows PowerShell: powershell.exe -NoProfile -STA -File tests/phase4-ui-smoke.ps1
+# Run with Windows PowerShell: powershell.exe -NoProfile -STA -File tests/UiSmoke/GitRepositoryManagementUiSmoke.ps1
 # Requires an interactive Windows desktop, .NET 10 SDK, and Git.
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {

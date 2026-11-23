@@ -1,10 +1,10 @@
 # Development plan: dockerino-lamborgino
 
-This plan turns the decisions in [decisiones.md](decisiones.md) into implementable stages.
+This plan turns the decisions in [decisions.md](decisions.md) into implementable stages.
 
 ## Phase 0: finalize product decisions
 
-The initial platform, path, terminal interface, button, and branch decisions are detailed in [README.md](README.md) and [decisiones.md](decisiones.md).
+The initial platform, path, terminal interface, button, and branch decisions are detailed in [README.md](README.md) and [decisions.md](decisions.md).
 
 - Phase 1 manual acceptance is complete (prompt, physical keyboard with marker, and visual resize), in addition to build and passive checks.
 - Distribution decision: require the .NET 10 runtime to be installed rather than shipping a self-contained executable. Development and build instructions may require the .NET 10 SDK.
@@ -22,7 +22,7 @@ The initial platform, path, terminal interface, button, and branch decisions are
 - Add a floating menu for projects, current branch, commands, and terminal sessions.
 - Integrate interactive terminal views and allow sessions to be opened or reselected from the menu.
 - Keep sessions alive when the menu is collapsed or closed. Closing the application stops its sessions and their owned process trees; detached Docker containers require separate explicit management.
-- Create a domain/backend layer for sessions and projects shared by the UI and CLI. Supported project, configuration, Git, launch, and terminal-session operations must be available through the CLI. Floating-launcher interactions are UI-only, except opening or activating the dashboard, which must have a CLI equivalent; see [D5](decisiones.md#d5-cli-parity-for-application-actions).
+- Create a domain/backend layer for sessions and projects shared by the UI and CLI. Supported project, configuration, Git, launch, and terminal-session operations must be available through the CLI. Floating-launcher interactions are UI-only, except opening or activating the dashboard, which must have a CLI equivalent; see [D5](decisions.md#d5-cli-parity-for-application-actions).
 
 ## Phase 3: project registration and manual launch configuration
 
@@ -42,7 +42,7 @@ selection and execution of saved launches remain in later phases.
 
 ## Phase 4: repository and branch management
 
-**Status: implemented; user acceptance and some verification remain outstanding.** The scope and guardrails are recorded in [D6](decisiones.md#d6-operate-git-in-explicitly-associated-repositories).
+**Status: implemented; user acceptance and some verification remain outstanding.** The scope and guardrails are recorded in [D6](decisions.md#d6-operate-git-in-explicitly-associated-repositories).
 
 - Let users manually associate multiple repository paths with a project through the UI and CLI, including paths outside the project directory. Do not discover repositories automatically. Validate paths and preserve usability of projects without valid repositories.
 - For each associated repository, query its current branch, local and remote branches, and working-tree status. Show local and remote branches in visually distinct groups, with distinct icons and a separator (visual reference: the GitHub extension in VS Code).

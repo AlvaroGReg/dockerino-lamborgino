@@ -210,4 +210,4 @@ license graph before distribution. The application is not currently provided
 as a self-contained package; the .NET 10 runtime must be installed.
 
 See [the development plan](plan.md) for implementation status and
-[architecture decisions](decisiones.md) for technical rationale.
+[architecture decisions](decisions.md) for technical rationale.
