@@ -128,9 +128,11 @@ Validate the commands, paths, and tools required by the selected configuration. 
 
 **Decision:** never add an update, installation, or other command implicitly. Action labels and any configured descriptions must make their purpose and known effects clear, independently of color.
 
-### D12. Require .NET 10 to be installed
+### D12. Offer self-contained and framework-dependent executables
 
-**Decision:** require the .NET 10 runtime to be installed on the machine where the application runs. The MVP will not ship as a self-contained application bundling the runtime. Development and build instructions may require the .NET 10 SDK.
+**Decision:** offer two single-file Windows application publish options: self-contained, bundling the .NET 10 runtime, and framework-dependent, which is smaller but requires the .NET 10 Windows Desktop Runtime on the target computer. Building from source requires the .NET 10 SDK; PowerShell 7 and Git remain external dependencies for their respective features.
+
+The documented publish target is `win-x64`; other Windows architectures require publishing for their corresponding runtime identifier. Bundling the runtime increases executable size, and native libraries may be extracted to a temporary directory at startup. The two variants use separate output directories to avoid overwriting one another.
 
 ## 4. Proposed functional flow
 

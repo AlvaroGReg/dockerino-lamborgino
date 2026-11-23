@@ -45,10 +45,14 @@ terminal does not stop detached Docker containers.
 
 ## Requirements
 
-On Windows, install:
+To build from source, install:
 
-- .NET 10 SDK to build and run from source.
-- .NET 10 Windows Desktop runtime to run the application.
+- .NET 10 SDK.
+
+The self-contained published executable bundles the .NET 10 runtime. The
+lighter framework-dependent executable requires the .NET 10 Windows Desktop
+Runtime to be installed on the target computer. Both variants still require:
+
 - PowerShell 7 (`pwsh.exe`), the default shell for new terminal sessions.
 - Git for repository features.
 
@@ -62,6 +66,47 @@ dotnet build DockerinoLamborgino.sln -c Release
 dotnet test DockerinoLamborgino.sln
 dotnet run --project .\src\DockerinoLamborgino.App\DockerinoLamborgino.App.csproj
 ```
+
+## Publish a single-file executable
+
+From the repository root, choose one of these Windows x64 options.
+
+### Self-contained (no .NET runtime installation)
+
+```powershell
+dotnet publish .\src\DockerinoLamborgino.App\DockerinoLamborgino.App.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -o .\artifacts\publish\win-x64-self-contained
+```
+
+Output: `artifacts\publish\win-x64-self-contained\DockerinoLamborgino.App.exe`.
+The .NET 10 runtime is bundled, so it can run without .NET installed, but the
+executable is larger. Native libraries may be extracted to a temporary
+directory when the application starts.
+
+### Framework-dependent (smaller; requires .NET 10)
+
+```powershell
+dotnet publish .\src\DockerinoLamborgino.App\DockerinoLamborgino.App.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained false `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -o .\artifacts\publish\win-x64-framework-dependent
+```
+
+Output: `artifacts\publish\win-x64-framework-dependent\DockerinoLamborgino.App.exe`.
+This executable is smaller because it does not bundle the .NET runtime. The
+target computer must have the .NET 10 Windows Desktop Runtime installed.
+
+Both commands target x64; publish separately with the appropriate runtime
+identifier for other Windows architectures. PowerShell 7 and Git remain
+external requirements for their respective features in both variants.
 
 ## Register and configure a project in the UI
 
@@ -208,8 +253,7 @@ The terminal integration uses EasyWindowsTerminalControl 1.0.38 (declared MIT)
 and depends directly on CI.Microsoft.Terminal.Wpf and
 Microsoft.Windows.Console.ConPTY. Its hosted HWND has WPF airspace limitations,
 and the upstream control relies on beta APIs. Review the full dependency and
-license graph before distribution. The application is not currently provided
-as a self-contained package; the .NET 10 runtime must be installed.
+license graph before distribution.
 
 See [the development plan](plan.md) for implementation status and
 [architecture decisions](decisions.md) for technical rationale.

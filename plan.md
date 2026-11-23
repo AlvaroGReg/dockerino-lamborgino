@@ -7,7 +7,7 @@ This plan turns the decisions in [decisions.md](decisions.md) into implementable
 The initial platform, path, terminal interface, button, and branch decisions are detailed in [README.md](README.md) and [decisions.md](decisions.md).
 
 - Phase 1 manual acceptance is complete (prompt, physical keyboard with marker, and visual resize), in addition to build and passive checks.
-- Distribution decision: require the .NET 10 runtime to be installed rather than shipping a self-contained executable. Development and build instructions may require the .NET 10 SDK.
+- Distribution decision: offer both self-contained and framework-dependent single-file Windows executables. The former bundles .NET 10; the lighter latter requires the .NET 10 Windows Desktop Runtime. Building from source requires the .NET 10 SDK; PowerShell 7 and Git remain external runtime dependencies. See [D12](decisions.md#d12-offer-self-contained-and-framework-dependent-executables) and the [publish instructions](README.md#publish-a-single-file-executable).
 
 ## Phase 1: terminal integration
 
