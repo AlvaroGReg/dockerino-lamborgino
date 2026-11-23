@@ -63,9 +63,9 @@ Do not scan child directories to discover projects. Store the project name, path
 
 ### D5. CLI parity for application actions
 
-**Decision:** every supported project, configuration, Git, launch, and managed terminal-session action must also be available through the CLI so AI agents can use the application's capabilities. The UI and CLI share the same domain/backend behavior and validation. Use managed identifiers; never accept arbitrary PIDs or run commands that are not explicitly configured.
+**Decision:** supported project, configuration, launch, and managed terminal-session actions must also be available through the CLI so AI agents can use the application's capabilities. Git is an exception: the UI provides repository status and branch switching, while the Dockerino CLI exposes only batch fetch and fast-forward-only pull, where it adds application-specific behavior. The UI and CLI share domain/backend behavior where both expose an operation. Use managed identifiers; never accept arbitrary PIDs or run commands that are not explicitly configured.
 
-**UI-shell exception:** interactions that control the floating launcher itself (such as moving it or exiting the application from it) do not need CLI operations. Opening or activating the dashboard window must have a CLI equivalent. This exception does not remove CLI parity for project, launch, or terminal-session operations.
+**UI-shell exception:** interactions that control the floating launcher itself (such as moving it or exiting the application from it) do not need CLI operations. Opening or activating the dashboard window must have a CLI equivalent. Repository status and branch switching remain UI features; users can use Git CLI directly for those operations.
 
 For launches, the CLI can start the application when it is not running. When
 started this way, the dashboard is not shown; only the floating launcher is
@@ -83,7 +83,7 @@ sessions survive application exit.
 
 ### D6. Operate Git in explicitly associated repositories
 
-**Decision:** a project can have multiple manually associated repositories, including repositories outside the project directory. Use Git CLI in the explicitly selected repository. Show each repository's current branch and status and list local and remote branches in separate groups with distinct icons and a separator (interaction reference: the GitHub extension in VS Code). Switching is individual, not a batch operation. Choosing a remote branch can explicitly create a local tracking branch when needed; general-purpose branch creation is out of scope.
+**Decision:** a project can have multiple manually associated repositories, including repositories outside the project directory. Use Git CLI in the explicitly selected repository. Show each repository's current branch and status and list local and remote branches in separate groups with distinct icons and a separator (interaction reference: the GitHub extension in VS Code). Switching is individual, not a batch operation. Choosing a remote branch can explicitly create a local tracking branch when needed; general-purpose branch creation is out of scope. The Dockerino CLI exposes batch fetch and fast-forward-only pull, but not status or branch switching; developers can use Git CLI directly for those operations.
 
 **Guardrails:**
 
@@ -175,4 +175,4 @@ Sessions continue when the menu is collapsed; the terminal view allows continued
 
 ## 7. Conclusion
 
-The product will draw inspiration from CodeDeck's workflows, but has integrated interactive ConPTY terminals opened and managed from the floating menu and CLI. Project and launch configurations are entered explicitly; an AI agent may inspect project guidance at the user's direction and submit the requested configuration through the CLI. The selected approach is **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. The CLI must use managed identifiers and never terminate arbitrary PIDs.
+The product provides integrated interactive ConPTY terminals opened and managed from the floating menu and CLI. Project and launch configurations are entered explicitly; an AI agent may inspect project guidance at the user's direction and submit the requested configuration through the CLI. The selected approach is **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. The CLI must use managed identifiers and never terminate arbitrary PIDs.

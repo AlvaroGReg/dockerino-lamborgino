@@ -22,7 +22,7 @@ The initial platform, path, terminal interface, button, and branch decisions are
 - Add a floating menu for projects, current branch, commands, and terminal sessions.
 - Integrate interactive terminal views and allow sessions to be opened or reselected from the menu.
 - Keep sessions alive when the menu is collapsed or closed. Closing the application stops its sessions and their owned process trees; detached Docker containers require separate explicit management.
-- Create a domain/backend layer for sessions and projects shared by the UI and CLI. Supported project, configuration, Git, launch, and terminal-session operations must be available through the CLI. Floating-launcher interactions are UI-only, except opening or activating the dashboard, which must have a CLI equivalent; see [D5](decisions.md#d5-cli-parity-for-application-actions).
+- Create a domain/backend layer for sessions and projects shared by the UI and CLI. Supported project, configuration, launch, and terminal-session operations must be available through the CLI. Git CLI parity is limited to batch fetch and fast-forward-only pull; repository status and branch switching remain UI features. Floating-launcher interactions are UI-only, except opening or activating the dashboard, which must have a CLI equivalent; see [D5](decisions.md#d5-cli-parity-for-application-actions).
 
 ## Phase 3: project registration and manual launch configuration
 
@@ -33,7 +33,7 @@ selection and execution of saved launches remain in later phases.
 - Start with an empty list of saved projects.
 - Provide a **Find project** action that lets the user select one project directory. Register only that directory; do not scan its children or automatically discover projects.
 - Create and edit project and launch configurations manually in the UI or through the CLI. Do not infer project structure, working directories, commands, launch types, or other configuration from files.
-- Establish the CLI entry point and shared domain/backend operations. Implement CLI parity for project registration and configuration management in this phase; expose Git, launch, and terminal-session operations through the CLI in the phases that implement those features.
+- Establish the CLI entry point and shared domain/backend operations. Implement CLI parity for project registration and configuration management in this phase; expose batch fetch and fast-forward-only pull, plus launch and terminal-session operations, through the CLI in the phases that implement those features.
 - The user may direct an agent to inspect project files according to supplied criteria or consult project guidance such as `AGENTS.md` and `README.md`. The agent can then submit the user-requested project details and exact launch methods through the CLI; this is agent-directed work, not application auto-detection or implicit configuration generation.
 - Allow users to configure project names and paths, actual working directories, multiple named launch types, each action's chosen color, process counts, commands, ordering, and success dependencies. Support review before saving, persistence, and later editing.
 - Validate paths and configuration structure, and report missing or invalid values for user resolution. Never execute commands while registering a project or saving a configuration.
@@ -51,9 +51,9 @@ selection and execution of saved launches remain in later phases.
 - For fetch, use the current branch's upstream remote; if there is none, use the sole remote when exactly one exists. If no remote exists or multiple remotes are ambiguous, report the problem without guessing. Apply this independently to each repository in a batch. Pull requires the current branch's configured upstream; report an error if it is missing.
 - Show local changes and let Git decide whether an operation is possible. Never automatically stash, reset, resolve conflicts, or synchronize; do not offer commit or push.
 - Reuse the user's Git credential mechanisms without storing credentials in the application. Support or clearly report interactive authentication and failures; verify behavior with the user's Git environment.
-- Refresh displayed repository state after operations, preserve project selection, and show actionable Git errors. Expose the same operations and validation through the CLI.
+- Refresh displayed repository state after operations, preserve project selection, and show actionable Git errors. Expose batch fetch and fast-forward-only pull through the CLI; status and branch switching are available in the UI, while terminal users can use Git directly.
 
-**Acceptance checks:** exercise multiple manually associated repositories, including an external path and a non-Git project; switching local and remote branches with clean and changed working trees; fast-forward and divergent pulls; batch partial failures; fetch with an upstream remote, a sole remote, no remote, and multiple ambiguous remotes; pull without an upstream; and authentication success and failure. Verify UI/CLI parity and that no unrequested synchronization, merge, stash, reset, commit, or push occurs.
+**Acceptance checks:** exercise multiple manually associated repositories, including an external path and a non-Git project; switching local and remote branches with clean and changed working trees; fast-forward and divergent pulls; batch partial failures; fetch with an upstream remote, a sole remote, no remote, and multiple ambiguous remotes; pull without an upstream; and authentication success and failure. Verify the UI Git operations and CLI batch fetch/pull behavior separately, and that no unrequested synchronization, merge, stash, reset, commit, or push occurs.
 
 ## Phase 5: configurable launches
 
@@ -135,7 +135,7 @@ checks; explicit design acceptance has not been separately stated.**
 - Test Docker with the daemon available and unavailable, attached and detached Compose, client interruption, stopping the test project, and volume preservation.
 - Test branch switching with a clean tree and rejection/warnings with local changes.
 - Test configurations with different structures and process counts, parallel sessions, sequential steps, and successful and failed steps. Verify that unconfigured commands never run.
-- Verify CLI parity for supported project, configuration, Git, launch, and terminal-session operations, and verify that opening or activating the dashboard has a CLI equivalent. Floating-launcher placement and application exit remain UI-only.
+- Verify CLI parity for supported project, configuration, launch, and terminal-session operations. Verify that Git CLI operations are limited to batch fetch and fast-forward-only pull; repository status and branch switching remain UI features, and terminal users may use Git directly. Verify that opening or activating the dashboard has a CLI equivalent. Floating-launcher placement and application exit remain UI-only.
 - Test configurations with both successful and failing steps, and verify that configured command effects are visible and only requested commands run.
 - Test creating, editing, saving, and launching multiple action types with different selected colors; verify labels distinguish actions independently of color.
 - Document installation, execution, project registration, manual launch configuration, and CLI operations for users and AI agents.
@@ -155,7 +155,7 @@ checks; explicit design acceptance has not been separately stated.**
 9. Terminal sessions remain accessible when the menu is collapsed; users can interact with them in the application and stop them individually without affecting unrelated processes.
 10. Users can configure multiple named launch types and select from several colors for each; names distinguish actions independently of color. Known effects can be explained for the relevant action.
 11. Local and remote branches are distinguished; selecting a remote branch without an existing local branch creates a local tracking branch without separate confirmation. Explicit fetch and fast-forward-only pull support individual and selected repositories.
-12. Supported project, configuration, Git, launch, and terminal-session operations are available through the CLI with equivalent behavior and validation. Opening or activating the dashboard also has a CLI equivalent; floating-launcher placement and application exit are UI-only.
+12. Supported project, configuration, launch, and terminal-session operations are available through the CLI with equivalent behavior and validation. Git CLI support is limited to batch fetch and fast-forward-only pull; repository status and branch switching remain available in the UI. Opening or activating the dashboard also has a CLI equivalent; floating-launcher placement and application exit are UI-only.
 
 ## Implementation questions
 

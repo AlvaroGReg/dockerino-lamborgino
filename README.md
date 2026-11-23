@@ -167,22 +167,24 @@ working-tree status and local/remote branches. Switching affects one
 repository at a time; selecting a remote branch creates a local tracking branch
 when needed. Fetch and fast-forward-only pull are explicit operations.
 
-The CLI accepts repository paths associated with the selected project:
+The CLI exposes only the Git operations where Dockerino adds application-specific
+behavior: batch fetch and fast-forward-only pull. Use the application UI for
+repository status and branch switching, or use Git directly for those operations
+in a terminal. The CLI accepts repository paths associated with the selected
+project:
 
 ```powershell
-dotnet @cli git status $projectId
-dotnet @cli git switch $projectId "C:\My Projects\Example" local main
-dotnet @cli git switch $projectId "C:\My Projects\Example" remote origin/feature
-dotnet @cli git fetch $projectId "C:\My Projects\Example"
-dotnet @cli git pull $projectId "C:\My Projects\Example"
+dotnet @cli git fetch $projectId "C:\My Projects\Example" "C:\Other\Repository"
+dotnet @cli git pull $projectId "C:\My Projects\Example" "C:\Other\Repository"
 ```
 
-Fetch uses the current branch's upstream remote or, if none exists, the sole
-configured remote. Pull requires an upstream and is fast-forward-only. Neither
-operation runs automatically. The integration does not request stash, reset,
-commit, push, or merge. Git terminal prompts are disabled; configure
-noninteractive credentials or authenticate separately. Git hooks and user
-configured credential helpers are not sandboxed.
+Each path must be associated with the project. Batch operations continue after
+an individual repository fails and report each result. Fetch uses the current
+branch's upstream remote or, if none exists, the sole configured remote. Pull
+requires an upstream and is fast-forward-only. Neither operation runs
+automatically. Git terminal prompts are disabled; configure noninteractive
+credentials or authenticate separately. Git hooks and user configured
+credential helpers are not sandboxed.
 
 ## CLI skill for AI agents
 
