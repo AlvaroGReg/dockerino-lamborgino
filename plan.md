@@ -167,8 +167,9 @@ checks; explicit design acceptance has not been separately stated.**
 
 ## Future terminal improvements
 
-- Investigate and optionally implement terminal keyboard handling and shortcuts.
-  The user reports that pressing Tab removes focus from the terminal instead of
-  completing input. Preserve shell and interactive-program behavior, consider
-  Shift+Tab, and provide an accessible way to move focus out of the terminal.
-  This issue is not yet fixed or independently diagnosed.
+- The user reported that Tab moved focus to the minimize button. The terminal
+  view forwards Tab key messages to its focused native window before WPF focus
+  traversal. An interactive integration check verifies PowerShell completion,
+  focus retention for Tab and Shift+Tab, and normal navigation between other
+  controls. Further verification of Shift+Tab delivery to interactive programs
+  and an accessible keyboard-only way to move focus out remain open.

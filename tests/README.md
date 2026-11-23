@@ -16,6 +16,8 @@ tests/
                   Standalone command-sequence protocol checks
   UiSmoke/
                   Interactive Windows UI Automation smoke tests
+  TerminalTabIntegration/
+                  Interactive real-terminal keyboard integration check
 ```
 
 ## Automated test projects
@@ -61,3 +63,18 @@ editing a seeded project, review and save, editing across an app restart, stale-
 conflict handling, corrupt-file isolation, and verifies that saving does not run
 configured commands. `GitRepositoryManagementUiSmoke.ps1` covers Git repository
 management through the UI and also requires Git on `PATH`.
+
+## Real terminal Tab integration
+
+Run this separately on an unlocked interactive Windows desktop with the .NET 10
+SDK, Windows Desktop runtime, ConPTY, and `pwsh.exe` on `PATH`:
+
+```powershell
+dotnet run --project tests/TerminalTabIntegration/TerminalTabIntegration.csproj
+```
+
+The check opens a window, moves the mouse and sends real keyboard input. Do not
+interact with the desktop until it finishes. It uses PowerShell completion to
+verify that Tab reaches the terminal, checks that Tab and Shift+Tab retain
+terminal focus, and checks Tab navigation between separate buttons. A timeout or inability to
+activate the window is a failure, not a skipped or successful check.

@@ -1,6 +1,9 @@
 using System.Text;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using DockerinoLamborgino.Terminal;
 using EasyWindowsTerminalControl;
@@ -35,6 +38,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     private bool _started;
     private bool _isStopped;
     private TerminalCommandSequence? _sequence;
+    private HwndHost? _terminalHost;
 
     public TerminalSessionView()
     {
@@ -42,6 +46,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
         _terminal.DisconnectConPTYTerm();
         Content = _terminal;
         Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public event Action<string>? StatusChanged;
@@ -226,6 +231,8 @@ public sealed class TerminalSessionView : UserControl, IDisposable
         _timer?.Stop();
         if (_window is not null) _window.Closed -= OnWindowClosed;
         Loaded -= OnLoaded;
+        Unloaded -= OnUnloaded;
+        ComponentDispatcher.ThreadFilterMessage -= FilterTerminalTab;
         IsEnabled = false;
         var factory = _factory;
         var term = _term;
@@ -246,12 +253,59 @@ public sealed class TerminalSessionView : UserControl, IDisposable
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ComponentDispatcher.ThreadFilterMessage -= FilterTerminalTab;
+        ComponentDispatcher.ThreadFilterMessage += FilterTerminalTab;
         var window = Window.GetWindow(this);
         if (window == _window) return;
         if (_window is not null) _window.Closed -= OnWindowClosed;
         _window = window;
         if (_window is not null) _window.Closed += OnWindowClosed;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        ComponentDispatcher.ThreadFilterMessage -= FilterTerminalTab;
+        _terminalHost = null;
+    }
+
+    private void FilterTerminalTab(ref MSG message, ref bool handled)
+    {
+        const int keyDown = 0x0100;
+        const int keyUp = 0x0101;
+        const int tab = 0x09;
+        if (handled || (message.message != keyDown && message.message != keyUp) ||
+            message.wParam != (IntPtr)tab)
+            return;
+
+        _terminalHost ??= FindTerminalHost(_terminal);
+        var handle = _terminalHost?.Handle ?? IntPtr.Zero;
+        if (handle == IntPtr.Zero || GetFocus() != handle || message.hwnd != handle)
+            return;
+
+        // WPF otherwise translates Tab into focus traversal before the native
+        // terminal receives it. Deliver the original key message, including
+        // scan code and modifier state, to the focused terminal HWND.
+        SendMessage(handle, message.message, message.wParam, message.lParam);
+        handled = true;
+    }
+
+    private static HwndHost? FindTerminalHost(DependencyObject parent)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is HwndHost host) return host;
+            var nested = FindTerminalHost(child);
+            if (nested is not null) return nested;
+        }
+        return null;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetFocus();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam);
 
     private void OnWindowClosed(object? sender, EventArgs e) => Stop();
 
