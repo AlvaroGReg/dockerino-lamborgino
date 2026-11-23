@@ -5,10 +5,10 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationIcon>..\..\..\assets\dockerino-lamborgino-icon.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\assets\dockerino-lamborgino-icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Resource Include="..\..\..\assets\dockerino-lamborgino-icon.png" Link="Assets\dockerino-lamborgino-icon.png" />
+    <Resource Include="..\..\assets\dockerino-lamborgino-icon.png" Link="Assets\dockerino-lamborgino-icon.png" />
     <ProjectReference Include="..\DockerinoLamborgino.Core\DockerinoLamborgino.Core.csproj" />
     <ProjectReference Include="..\DockerinoLamborgino.Terminal\DockerinoLamborgino.Terminal.csproj" />
   </ItemGroup>

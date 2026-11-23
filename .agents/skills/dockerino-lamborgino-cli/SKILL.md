@@ -7,8 +7,8 @@ description: Use the Dockerino Lamborgino Windows application through its CLI to
 
 Use this skill when operating the Dockerino Lamborgino application through its
 CLI. The application targets Windows and requires the .NET 10 runtime. For
-development commands, install the .NET 10 SDK and run commands from
-`dockerino-lamborgino/`.
+development commands, install the .NET 10 SDK and run commands from the
+repository root.
 
 ## Operating principles
 
@@ -207,5 +207,5 @@ session inspect|stop|output|follow <session-id> [--offset <offset>]
 dashboard open
 ```
 
-For complete implementation status and the canonical examples, consult
-[`dockerino-lamborgino/README.md`](../../../dockerino-lamborgino/README.md).
+For implementation status and usage details, consult the repository
+[`README.md`](../../../README.md).

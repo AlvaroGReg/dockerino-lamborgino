@@ -1,1 +1,4 @@
 !agents.md
+**/bin/
+**/obj/
+.vs/

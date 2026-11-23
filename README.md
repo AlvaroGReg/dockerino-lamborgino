@@ -2,61 +2,212 @@
   <img src="assets/dockerino-lamborgino-icon.svg" alt="Dockerino Lamborgino icon" width="128">
 </p>
 
-# dockerino-lamborgino
+# Dockerino Lamborgino
 
-## Purpose
+Dockerino Lamborgino is a Windows desktop launcher for local development
+projects. Register a project, define named launch actions, and run their
+configured commands in interactive terminals hosted by the application. It
+also provides explicit Git branch and synchronization operations for
+repositories associated with a project.
 
-Develop a small Windows desktop application for selecting a configured project, optionally changing its Git branch, and running its configured commands in integrated terminals. The application and its current implementation status are in [`dockerino-lamborgino/`](dockerino-lamborgino/README.md).
+The application does not discover projects, inspect files to infer commands,
+install dependencies, or run commands during registration. Users configure
+projects and launch actions through the UI or CLI; only the selected action's
+saved commands are run.
 
-## Overview
+## What it does
 
-Build a local Windows desktop application for managing development projects, switching Git branches, and opening terminals **integrated into the application** from a floating menu. Terminals will be interactive: users can see output and type into them, not merely observe logs.
+- Register and edit projects and launch actions through the desktop UI or CLI.
+- Associate one or more Git repositories with a project, including repositories
+  outside its directory. View status and branches, switch branches, and
+  explicitly fetch or fast-forward pull.
+- Run named actions in interactive terminal sessions. Each configured process
+  has its own terminal; steps within a process run in order, while independent
+  processes can run concurrently.
+- Inspect launch/session state and output, and stop an application-managed
+  session or launch through the UI or CLI.
+- Keep terminal sessions visible and manageable from the application dashboard.
 
-The user explicitly selects and registers one project directory. Project details and editable launch configurations are entered manually; the application does not inspect project files to infer commands or configuration. An AI agent may inspect project guidance such as `AGENTS.md` or `README.md` when the user directs it, then use the CLI to create or edit the requested configuration. Supported project, configuration, Git, launch, and terminal-session operations are available through both UI and CLI; floating-launcher interactions such as moving it or exiting the application are UI-only, while opening or activating the dashboard has a CLI equivalent. Users configure launch types, their processes, ordering and dependencies, and choose a color for each action; there are no two fixed default actions. The [WEBS-CMS workflow](examples/webs-cms.md) is a concrete example and test case, not the product's required structure. The Phase 1 spike validated **WPF on .NET 10 + ConPTY + Job Objects**, including physical keyboard input and visual resizing.
+This is a local Windows development tool, not a deployment service. Sessions
+and their output are held in memory for the application lifetime. Stopping a
+terminal does not stop detached Docker containers.
 
-### Project location
+## How it is built
 
-There is no prepopulated project list or automatic workspace scan. A **Find project** action lets the user select one project directory to register; its children are not scanned as separate projects. Project and launch details are provided manually through the UI or CLI. `../../00-WEBS-CMS`, relative to this documentation directory, is an example location for testing, not a hard-coded or required workspace.
+- **Desktop UI:** WPF on .NET 10.
+- **CLI:** a .NET 10 command-line application.
+- **Shared behavior:** a Core library provides domain and configuration
+  behavior used by the UI and CLI.
+- **Terminals:** EasyWindowsTerminalControl hosts interactive Windows
+  pseudoconsole (ConPTY) sessions. Job Objects scope process cleanup to
+  application-managed sessions.
+- **Git:** repository operations use the Git command-line client.
 
-## Before implementation
+## Requirements
 
-The initial product decisions have been made and incorporated into the development plan. The spike and its runtime tests of ConPTY, Job Objects, real commands, and Docker are documented in [prototype/README.md](prototype/README.md). Phase 1 acceptance was completed; see [plan.md](plan.md).
+On Windows, install:
 
-## Decisions
+- .NET 10 SDK to build and run from source.
+- .NET 10 Windows Desktop runtime to run the application.
+- PowerShell 7 (`pwsh.exe`), the default shell for new terminal sessions.
+- Git for repository features.
 
-- **Platform/terminal:** Windows. The application will have integrated, interactive ConPTY terminals; PowerShell and other shells run inside them, rather than external windows replacing the application's terminal.
-- **Location and configuration:** the user explicitly selects one project directory and manually provides project and launch details. The application does not detect projects or generate commands from project files.
-- **Agent access:** supported project, configuration, Git, launch, and terminal-session operations are available through the CLI. Floating-launcher interactions are UI-only; opening or activating the dashboard has a CLI equivalent. An agent may inspect project files according to user-supplied criteria or project guidance, then use the CLI to perform supported application actions.
-- **CLI launches:** the target behavior allows the CLI to start the application with only the floating launcher visible, launch asynchronously, inspect or stop managed sessions, and retrieve or follow terminal output. CLI-started sessions share the application's lifetime and exit warning; see [D5](decisiones.md#d5-cli-parity-for-application-actions).
-- **Actions:** users configure launch types, commands, working directories, execution order and conditions, and choose each action's color from several options. Actions are identified by name as well as color; there are no fixed green or orange defaults. Only explicitly configured commands run.
-- **Git:** projects can have multiple manually associated repositories, including outside the project directory. Show local and remote branches separately. Switching to a remote branch without a local branch explicitly creates a local tracking branch. Explicit fetch and fast-forward-only pull can operate on individual repositories or a selection; see [the Phase 4 plan](plan.md#phase-4-repository-and-branch-management).
-- **Sessions and processes:** terminals are opened and managed from the floating menu. The spike confirmed ConPTY and Job Objects for stopping a session's own process tree; the interface must never accept arbitrary PIDs.
-- **Distribution:** require the .NET 10 runtime to be installed; do not ship a self-contained application bundling it.
-- **Product reference:** the [CodeDeck](../CodeDeck) clone is at `../CodeDeck`, relative to this documentation. It is a reference for workflows, UI, and project, command, and launch-set concepts; it is neither the product's direct basis nor a project to modify here.
-- **Docker:** the spike confirmed that closing the client session does not stop a detached container; stopping or removing containers is an explicit operation scoped to the Compose project. Containers are managed by the Docker daemon and are not ordinary descendants of the local process; Job Objects alone cannot stop them.
+## Build and run
 
-### Initially selected terminal control
+Run these commands from the repository root:
 
-- **Initial choice:** [EasyWindowsTerminalControl](https://github.com/MitchCapper/EasyWindowsTerminalControl), encapsulated behind a project-owned terminal adapter/interface so it can be replaced.
-- **Contingency:** if the control does not meet requirements or cannot integrate process management, create and maintain a project fork.
-- [WPF UI Terminal](https://github.com/emako/wpfui.terminal) is a port of Easy, not an independent implementation. [WindowsTerminalControl](https://github.com/0x5bfa/WindowsTerminalControl) and [Term1809](https://github.com/zac15987/Term1809) remain comparison references, not selected dependencies.
-- **WebView2 + xterm.js + ConPTY bridge** is a last-resort alternative if the WPF Windows Terminal control approach proves infeasible.
+```powershell
+dotnet build DockerinoLamborgino.sln -c Debug
+dotnet build DockerinoLamborgino.sln -c Release
+dotnet test DockerinoLamborgino.sln
+dotnet run --project .\src\DockerinoLamborgino.App\DockerinoLamborgino.App.csproj
+```
 
-Keep the control behind a project interface. Pin versions and review licenses and dependencies. If changes are needed, maintain an explicit fork with its own tests rather than spreading control-specific changes throughout the application.
+## Register and configure a project in the UI
 
-## Executive summary
+Choose **Find project** and select one directory, or use **Manage projects…**
+to edit a saved project. Enter the project name and directory and edit the
+launch configuration as a JSON **array of actions**. `[]` saves a project
+without actions. Select **Review and save…** to inspect the values before
+confirming. Select a saved project and **Edit selected** to change it later.
+Validation and storage errors appear in the window; a conflicting edit must be
+reloaded.
 
-The idea is feasible as a local desktop application. It requires a real terminal integration (ConPTY), management of owned process sessions, access to multiple local repositories, and Git execution. CodeDeck will be studied as a UX and workflow reference; the spike validated the proposed **.NET 10 WPF + ConPTY + Job Objects** integration. See the [Phase 1 report](prototype/README.md).
+Enter associated repository roots explicitly as a JSON array of absolute paths;
+these may be outside the project directory. Existing projects default to an
+empty array. Actions are displayed by name, color value, and description. For
+isolated testing, the application accepts
+`--project-storage <absolute-directory>` to override its default project store.
 
-Configurations must support different numbers and kinds of independent processes, each with its own terminal. Steps within a process run sequentially; a failure skips its remaining steps without stopping other processes. They must not assume a particular project layout or technology. The [WEBS-CMS example](examples/webs-cms.md) records one real workflow used to exercise those capabilities.
+## Configure projects with the CLI
 
-## Documents
+The CLI and application use the shared project configuration service. Projects
+are stored individually under
+`%LOCALAPPDATA%\DockerinoLamborgino\projects` by default. An absent store starts
+empty. Registration selects only the directory given; it does not scan for
+projects, infer commands, or run commands.
 
-- [Architecture decisions](decisiones.md): proposal, alternatives, and risks.
-- [Development plan](plan.md): phases, acceptance criteria, and outstanding questions.
-- [Application](dockerino-lamborgino/README.md): implementation status, build instructions, and configuration CLI.
-- [WEBS-CMS example](examples/webs-cms.md): observed project structure and representative launch configurations for testing.
+Register a project and save its editable project object to a JSON file:
 
-## Basis for the analysis
+```powershell
+$cli = @("run", "--project", ".\src\DockerinoLamborgino.Cli", "--")
+$result = dotnet @cli register "Example" "C:\My Projects\Example" | ConvertFrom-Json
+$projectId = $result.project.id
+$revision = $result.revision
+$projectFile = ".\project-edit.json"
+$result.project | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 $projectFile
+dotnet @cli list
+dotnet @cli get $projectId
+# Edit project-edit.json, then validate and save.
+dotnet @cli validate $projectFile
+dotnet @cli save $projectFile $revision
+```
 
-The proposal was checked against a real workspace described in the [WEBS-CMS example](examples/webs-cms.md). Those observations can inform user- or agent-authored launch configurations and test cases; they do not drive application auto-detection. The initial inventory did not execute startup or update commands; subsequent startup tests are recorded in the spike report.
+`register` creates an empty action list. `get` and `list` return JSON with the
+project, validation issues, and a revision. Edit the `project` object in a
+separate JSON file, then validate and save it with the current revision. A
+stale revision is rejected; reload before editing again. `save` without a
+revision is create-only. Exit codes are 0 for success, 1 for an operation error,
+and 2 for invalid CLI syntax.
+
+Each project has a unique GUID `id`, a name, an existing absolute `directory`,
+an optional array of distinct absolute repository paths, and an `actions`
+array. Each action has a unique GUID, name, `#RRGGBB` color, optional
+description, and one or more processes. Each process has a unique GUID, name,
+existing absolute `workingDirectory`, and one or more steps. Each step has a
+unique GUID and command, and may refer to an earlier step with
+`dependsOnSuccessOf`. Steps run in array order; a failure skips later steps in
+that process while independent processes continue. Unknown JSON properties are
+rejected. Generate unique IDs explicitly, for example with
+`[guid]::NewGuid()` in PowerShell.
+
+After creating or saving a project through the CLI, refresh the project list in
+the application. If the app is not running, the CLI starts it with only the
+floating launcher visible:
+
+```powershell
+dotnet @cli projects refresh [project-id]
+dotnet @cli dashboard open
+```
+
+## Launches and terminal sessions
+
+Select a project in the dashboard and click one of its configured launch
+actions. Each configured process uses a separate PowerShell 7 terminal. Session
+tabs can be selected or closed; closing a tab stops that session, and `+` opens
+a new terminal.
+
+The CLI communicates with the running application over a current-user named
+pipe. If needed, it starts the application with the dashboard hidden. Set
+`DOCKERINO_APP_PATH` to the absolute application executable path if it is not
+beside the CLI executable. For isolated instances, set the same
+`DOCKERINO_PIPE_NAME` in both processes.
+
+```powershell
+dotnet @cli launch start <project-id> <action-id>
+dotnet @cli launch list
+dotnet @cli launch inspect <launch-id>
+dotnet @cli launch stop <launch-id>
+dotnet @cli session list
+dotnet @cli session inspect <session-id>
+dotnet @cli session output <session-id>
+dotnet @cli session follow <session-id>
+dotnet @cli session stop <session-id>
+```
+
+Launches and sessions, including terminal output, are held in memory for the
+application lifetime. Exiting the application stops its managed sessions.
+Stopping a terminal does not stop detached Docker containers.
+
+## Git repository operations
+
+Add repository roots to a project explicitly; the application does not
+discover repositories. The dashboard shows each associated repository's
+working-tree status and local/remote branches. Switching affects one
+repository at a time; selecting a remote branch creates a local tracking branch
+when needed. Fetch and fast-forward-only pull are explicit operations.
+
+The CLI accepts repository paths associated with the selected project:
+
+```powershell
+dotnet @cli git status $projectId
+dotnet @cli git switch $projectId "C:\My Projects\Example" local main
+dotnet @cli git switch $projectId "C:\My Projects\Example" remote origin/feature
+dotnet @cli git fetch $projectId "C:\My Projects\Example"
+dotnet @cli git pull $projectId "C:\My Projects\Example"
+```
+
+Fetch uses the current branch's upstream remote or, if none exists, the sole
+configured remote. Pull requires an upstream and is fast-forward-only. Neither
+operation runs automatically. The integration does not request stash, reset,
+commit, push, or merge. Git terminal prompts are disabled; configure
+noninteractive credentials or authenticate separately. Git hooks and user
+configured credential helpers are not sandboxed.
+
+## CLI skill for AI agents
+
+The [`dockerino-lamborgino-cli` skill](https://github.com/AlvaroGReg/alvarogreg-skills/tree/main/skills/dockerino-lamborgino-cli)
+helps AI agents use the CLI to configure projects, operate on associated Git
+repositories, run saved actions, and inspect or stop managed sessions. Install
+it with the Skills CLI:
+
+```powershell
+npx skills add AlvaroGReg/alvarogreg-skills --skill dockerino-lamborgino-cli
+```
+
+## Status and limitations
+
+The project-registration, configuration, Git, and configurable-launch
+workflows are implemented. The UI uses a dark, muted-turquoise theme; the
+dashboard shows project tools after project selection and terminal tabs when
+sessions exist.
+
+The terminal integration uses EasyWindowsTerminalControl 1.0.38 (declared MIT)
+and depends directly on CI.Microsoft.Terminal.Wpf and
+Microsoft.Windows.Console.ConPTY. Its hosted HWND has WPF airspace limitations,
+and the upstream control relies on beta APIs. Review the full dependency and
+license graph before distribution. The application is not currently provided
+as a self-contained package; the .NET 10 runtime must be installed.
+
+See [the development plan](plan.md) for implementation status and
+[architecture decisions](decisiones.md) for technical rationale.

@@ -2,7 +2,7 @@
 
 ## 1. Context and need
 
-Developers work with local projects whose commands, directories, process counts, and startup sequences vary. They need to save launch configurations and run them in interactive terminals. The [WEBS-CMS example](examples/webs-cms.md) is a real target and test case, not a required product structure.
+Developers work with local projects whose commands, directories, process counts, and startup sequences vary. They need to save launch configurations and run them in interactive terminals. The application must support varied project structures without requiring a particular workspace layout.
 
 The desired experience is:
 
@@ -18,13 +18,12 @@ The scope is local development. The launcher does not independently deploy, sync
 
 **Feasibility: high, with a clear operational dependency.**
 
-- **Representative workspace:** the [WEBS-CMS example](examples/webs-cms.md) provides real repositories, commands, and differing internal paths for testing, without defining requirements for other projects.
 - **Configuration:** commands, working directories, execution order, and dependencies must be stored per action rather than encoded as application-specific behavior.
 - **Branches:** Git can query branches and switch the selected repository's branch without leaving the launcher.
-- **Integrated terminal:** ConPTY connects shells and processes to pseudoconsoles hosted by the application. The spike validated Job Objects as a way to group and stop session processes.
+- **Integrated terminal:** ConPTY connects shells and processes to pseudoconsoles hosted by the application. Job Objects group and stop session processes.
 - **Floating UI:** WPF supports a small, borderless, always-on-top window that expands from an arrow-like control.
 
-The main technical challenge is integrating a complete terminal, preserving interactivity/ANSI/resize, and safely managing process trees. The spike tested ConPTY, Job Objects, and real commands; further integration and edge-case tests remain necessary. Configured commands may fail because of credentials, network, or dependencies and need visible error handling.
+The main technical challenge is preserving terminal interactivity, ANSI output, resize behavior, and safe process-tree management. Configured commands may fail because of credentials, network, or dependencies and need visible error handling.
 
 ## 3. Recommended decisions
 
@@ -36,7 +35,7 @@ A normal web page cannot freely operate on disk repositories or create local pse
 
 ### D2. WPF on .NET 10
 
-**Decision:** create a standalone desktop application using WPF on .NET 10. The spike validated the basic EasyWindowsTerminalControl integration; see [prototype/README.md](prototype/README.md).
+**Decision:** create a standalone desktop application using WPF on .NET 10.
 
 WPF directly supports the floating window and Windows/.NET integration. The integrated terminal remains a separate maintenance risk: review its dependencies, .NET 10 compatibility, licensing, and maintainability.
 
@@ -54,7 +53,7 @@ The menu UI and terminal views can be collapsed or switched without destroying a
 
 ### D4. Explicit project registration and manual launch configuration
 
-**Decision:** do not populate projects automatically, infer project details, or assume a fixed workspace. A **Find project** action lets the user select exactly one project directory to register. Do not scan its children or other locations. `../../00-WEBS-CMS`, relative to this documentation directory, is a known example for testing, not a required or preconfigured root.
+**Decision:** do not populate projects automatically, infer project details, or assume a fixed workspace. A **Find project** action lets the user select exactly one project directory to register. Do not scan its children or other locations.
 
 Project and launch configurations are created and edited explicitly by the user through the UI or CLI. Do not automatically inspect project files to infer project information, working directories, startup commands, or launch types. Users can configure multiple named launch types, including a chosen color, commands, working directories, parallel or sequential execution, and success-dependent steps. Let the user review configurations before saving, persist them for later use, and allow subsequent editing. Launch actions use saved configuration and never re-infer commands when run. Registration and saving must not execute commands.
 
@@ -107,7 +106,7 @@ The floating menu opens terminals by project/command and supports multiple sessi
 
 ### D8. Session process ownership and stopping
 
-**Decision:** each session has an internal identifier and its own process group. The spike tested Job Objects to assign the root process and descendants from the start and stop only the group associated with the session. Test the control's process factory/extension; if it cannot assign the process to the Job Object at the required time, fork and adapt process creation.
+**Decision:** each session has an internal identifier and its own process group. Use Job Objects to assign the root process and descendants from the start and stop only the group associated with the session.
 
 Do not expose `taskkill` or a generic PID-based operation to the UI/CLI. Testing must cover descendants of `dotnet`, `npm`, and their shells, session closure, application closure, and creation failures. Safe stopping is part of the objective and requires validation in the integrated application.
 
@@ -123,17 +122,11 @@ redundant under the fail-fast rule, because every earlier step must succeed
 before a later step runs. This also means that a failure skips later steps even
 when they have no explicit dependency.
 
-Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures. The [WEBS-CMS example](examples/webs-cms.md) exercises these general capabilities.
+Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures. Tests should exercise varied configurations and project structures.
 
 ### D10. Explicit command effects
 
-**Decision:** never add an update, installation, or other command implicitly. Action labels and any configured descriptions must make their purpose and known effects clear, independently of color. For the update in the WEBS-CMS test example, explain its dependency changes without requesting confirmation; this is not a requirement for every project or action.
-
-### D11. CodeDeck as a reference, not a direct basis
-
-**Decision:** use the clone at `../CodeDeck` to study workflows, UI, and project, command, and launch-set concepts. The product will have an architecture adapted to ConPTY terminals and sessions with process ownership; CodeDeck is not the direct basis and will not be modified as part of this project.
-
-The clone is available at `../CodeDeck`, relative to this documentation, for reviewing existing workflows, UI, and architecture.
+**Decision:** never add an update, installation, or other command implicitly. Action labels and any configured descriptions must make their purpose and known effects clear, independently of color.
 
 ### D12. Require .NET 10 to be installed
 
@@ -162,11 +155,11 @@ Sessions continue when the menu is collapsed; the terminal view allows continued
 | Incorrect or incomplete manually supplied paths and commands | Validate values, report errors, and let the user or user-directed agent correct the configuration; do not infer replacements. |
 | UI and CLI behavior diverge | Route both interfaces through the same domain/backend operations and test supported actions through both. |
 | Switching branches with local changes | Show status, do not use automatic stash, and preserve Git errors. |
-| Incomplete ConPTY terminal (resize, ANSI, keyboard, or encoding) | Prototype early with real shells and processes; use a tested control and document its dependencies/license. |
+| Incomplete ConPTY terminal (resize, ANSI, keyboard, or encoding) | Test the integrated terminal with real shells and processes; use a maintained control and document its dependencies/license. |
 | Process descendants escape control | Assign early to a Job Object and test `dotnet`/`npm` trees; do not implement stop if the tree can escape. |
 | Stopping the Docker client leaves containers running | Separately identify client processes and Compose projects/resources; operate only on the project started by the session and test `stop` versus `down`. |
 | Failed prerequisite or slow command | Show progress and exit status; skip success-dependent steps on failure while independent sessions continue. |
-| Configured commands modify project data or dependencies | Run only selected commands and make known effects visible; test the WEBS-CMS update behavior separately. |
+| Configured commands modify project data or dependencies | Run only selected commands and make known effects visible. |
 | Duplicate sessions | Identify each session, show it in the floating menu, and prevent double clicks during launch. |
 
 ## 6. Out of scope for the MVP
@@ -182,4 +175,4 @@ Sessions continue when the menu is collapsed; the terminal view allows continued
 
 ## 7. Conclusion
 
-The product will draw inspiration from CodeDeck's workflows, but will have integrated interactive ConPTY terminals opened and managed from the floating menu and CLI. Project and launch configurations are entered explicitly; an AI agent may inspect project guidance at the user's direction and submit the requested configuration through the CLI. The selected approach is **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. The spike validated terminal rendering/input/resize, basic child-process control, and the selected control; the complete application still needs integration and edge-case testing. The CLI must use managed identifiers and never terminate arbitrary PIDs.
+The product will draw inspiration from CodeDeck's workflows, but has integrated interactive ConPTY terminals opened and managed from the floating menu and CLI. Project and launch configurations are entered explicitly; an AI agent may inspect project guidance at the user's direction and submit the requested configuration through the CLI. The selected approach is **WPF + .NET 10 + Git CLI + ConPTY + Job Objects**. The CLI must use managed identifiers and never terminate arbitrary PIDs.

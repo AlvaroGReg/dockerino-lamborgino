@@ -1,39 +1,21 @@
 # Development plan: dockerino-lamborgino
 
-This plan turns the decisions in [decisiones.md](decisiones.md) into implementable stages. The status of the Phase 1 spike is recorded in [prototype/README.md](prototype/README.md).
+This plan turns the decisions in [decisiones.md](decisiones.md) into implementable stages.
 
 ## Phase 0: finalize product decisions
 
 The initial platform, path, terminal interface, button, and branch decisions are detailed in [README.md](README.md) and [decisiones.md](decisiones.md).
 
-- Phase 1 manual acceptance is complete (prompt, physical keyboard with marker, and visual resize), in addition to build and passive checks. Preserve the evidence and limitations before building the UI.
+- Phase 1 manual acceptance is complete (prompt, physical keyboard with marker, and visual resize), in addition to build and passive checks.
 - Distribution decision: require the .NET 10 runtime to be installed rather than shipping a self-contained executable. Development and build instructions may require the .NET 10 SDK.
 
-## Phase 1: integration prototype
+## Phase 1: terminal integration
 
-**Status: the Phase 1 blocker was resolved and the spike acceptance criteria were approved on 2026-11-19.** The reproduced issue was isolated to the host's standard handles: with `STARTF_USESTDHANDLES` and null handles, the prompt reaches ConPTY and the shell remains alive. The regression failed before and passed after the fix; `pwsh` and `cmd` passed passive checks, and a test process's exit code 23 was observed. Debug and Release build successfully. PID, state, errors, and output are logged without treating `TermReady` as acceptance. The user confirmed the prompt, physical keyboard, and visual resize; the marker file created from the terminal was verified. See [prototype/README.md](prototype/README.md) for evidence and limitations. Phase 2 has since started; its separate acceptance is tracked below.
-
-Create a minimal prototype with **EasyWindowsTerminalControl** behind a project-owned interface/adapter that can:
-
-- Start PowerShell/pwsh and test commands in ConPTY.
-- Render ANSI/VT, receive keyboard input, maintain encoding, and handle resize.
-- Assign the root process to a Job Object and verify that stopping a session terminates only its descendants.
-- Check whether the control's process factory/extension allows assignment to a Job Object before resuming the process; otherwise, create a minimal fork to integrate this lifecycle.
-- Start a test Docker container from the terminal and separately test client exit/interruption and container stop.
-- In the historical WEBS-CMS test case, validate `app`, `backOffice`, and main `.csproj` paths, and run the three real workspace commands in separate sessions. These are test inputs, not launcher requirements.
-
-Test paths containing spaces and different structures, including EmbutidosEzequiel, whose application directory is `Ezequiel`.
-
-Verify the selected control's license, versions, and dependencies. Keep alternatives documented in [README.md](README.md), but do not delay the prototype for an exhaustive comparison. Distinguish terminating the `docker compose` process from stopping or removing its containers. Use an isolated test project name for Docker Compose; never terminate the Docker daemon or stop containers globally.
-
-**Output:** a decision on the reusable ConPTY control and evidence of complete terminal interaction, process isolation, and a scoped Docker lifecycle. Do not proceed to the full UI if an essential requirement fails.
+**Status: completed and accepted by the user on 2026-11-19.** The user confirmed a working ConPTY prompt, physical keyboard input, and resizing; a marker file created from the terminal was verified. The application and its tests now live in the root `src/` and `tests/` directories.
 
 ## Phase 2: WPF skeleton
 
 **Status: Phase 2 tests completed and the skeleton accepted by the user.**
-Implementation, automated results, the user's manual observations, and
-remaining evidence limitations are in
-[`dockerino-lamborgino/PHASE-2-EVIDENCE.md`](dockerino-lamborgino/PHASE-2-EVIDENCE.md).
 
 - Create an independent .NET 10 WPF application in its own workspace directory, not inside a site.
 - Implement a compact, borderless, always-on-top window that can collapse and expand.
@@ -45,10 +27,8 @@ remaining evidence limitations are in
 ## Phase 3: project registration and manual launch configuration
 
 **Status: implemented, automatically verified, and accepted by the user.**
-The WPF editor and CLI use the shared configuration service. See
-[Phase 3 evidence](dockerino-lamborgino/PHASE-3-EVIDENCE.md) for the checks
-and their limitations. Git branch selection and execution of saved launches
-remain in later phases.
+The WPF editor and CLI use the shared configuration service. Git branch
+selection and execution of saved launches remain in later phases.
 
 - Start with an empty list of saved projects.
 - Provide a **Find project** action that lets the user select one project directory. Register only that directory; do not scan its children or automatically discover projects.
@@ -62,7 +42,7 @@ remain in later phases.
 
 ## Phase 4: repository and branch management
 
-**Status: implemented; user acceptance and some verification remain outstanding.** See [Phase 4 evidence](dockerino-lamborgino/PHASE-4-EVIDENCE.md) for checks and limitations. The scope and guardrails are recorded in [D6](decisiones.md#d6-operate-git-in-explicitly-associated-repositories).
+**Status: implemented; user acceptance and some verification remain outstanding.** The scope and guardrails are recorded in [D6](decisiones.md#d6-operate-git-in-explicitly-associated-repositories).
 
 - Let users manually associate multiple repository paths with a project through the UI and CLI, including paths outside the project directory. Do not discover repositories automatically. Validate paths and preserve usability of projects without valid repositories.
 - For each associated repository, query its current branch, local and remote branches, and working-tree status. Show local and remote branches in visually distinct groups, with distinct icons and a separator (visual reference: the GitHub extension in VS Code).
@@ -78,11 +58,8 @@ remain in later phases.
 ## Phase 5: configurable launches
 
 **Status: completed and accepted by the user on 2026-11-21.** The user reports
-that Phase 5 tests have been completed successfully. Earlier automated and
-isolated integration results, plus the limitations recorded at that time, are
-preserved in [Phase 5 evidence](dockerino-lamborgino/PHASE-5-EVIDENCE.md);
-the user’s later confirmation is recorded there separately. The confirmation
-did not include individual test setups or results.
+that Phase 5 tests have been completed successfully; individual test setups
+and results were not provided.
 
 - Run saved launch configurations in integrated interactive ConPTY terminals.
 - Expose launch, status, and session-management operations through the CLI as well as the UI, using managed project, action, and session identifiers.
@@ -103,12 +80,9 @@ covers the visual design and application of the full launcher interaction.
 
 ## Phase 6: visual design and application
 
-**Status: the earlier Phase 6 iteration was manually verified by user report.
-The latest requested navigation and terminal-tab revision is implemented but
-still needs manual verification; explicit design acceptance has not been
-separately stated.** Implementation and verification evidence and its
-limitations are tracked in
-[Phase 6 evidence](dockerino-lamborgino/PHASE-6-EVIDENCE.md).
+**Status: the latest requested navigation and terminal-tab revision is
+implemented. The user reported positive results for the requested manual
+checks; explicit design acceptance has not been separately stated.**
 
 - **Preliminary UI direction from the user; not yet a finalized design or
   implementation specification:**
@@ -162,7 +136,7 @@ limitations are tracked in
 - Test branch switching with a clean tree and rejection/warnings with local changes.
 - Test configurations with different structures and process counts, parallel sessions, sequential steps, and successful and failed steps. Verify that unconfigured commands never run.
 - Verify CLI parity for supported project, configuration, Git, launch, and terminal-session operations, and verify that opening or activating the dashboard has a CLI equivalent. Floating-launcher placement and application exit remain UI-only.
-- Use the [WEBS-CMS example](examples/webs-cms.md) as a real test case, including success and failure of its optional update sequence; assess its effects before executing the update.
+- Test configurations with both successful and failing steps, and verify that configured command effects are visible and only requested commands run.
 - Test creating, editing, saving, and launching multiple action types with different selected colors; verify labels distinguish actions independently of color.
 - Document installation, execution, project registration, manual launch configuration, and CLI operations for users and AI agents.
 - Verify the chosen distribution requirement (.NET 10 installed).
@@ -182,8 +156,6 @@ limitations are tracked in
 10. Users can configure multiple named launch types and select from several colors for each; names distinguish actions independently of color. Known effects can be explained for the relevant action.
 11. Local and remote branches are distinguished; selecting a remote branch without an existing local branch creates a local tracking branch without separate confirmation. Explicit fetch and fast-forward-only pull support individual and selected repositories.
 12. Supported project, configuration, Git, launch, and terminal-session operations are available through the CLI with equivalent behavior and validation. Opening or activating the dashboard also has a CLI equivalent; floating-launcher placement and application exit are UI-only.
-
-The [WEBS-CMS example](examples/webs-cms.md) is one acceptance test fixture, including its 11 observed repositories and optional three-session update workflow. It does not limit the projects, commands, or number of sessions supported by the MVP.
 
 ## Implementation questions
 

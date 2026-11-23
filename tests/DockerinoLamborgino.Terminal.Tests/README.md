@@ -6,7 +6,7 @@ Run on Windows with the .NET 10 SDK, Windows Desktop runtime, and ConPTY support
 dotnet test tests/DockerinoLamborgino.Terminal.Tests/DockerinoLamborgino.Terminal.Tests.csproj -p:RestoreLockedMode=true
 ```
 
-The test follows the accepted terminal spike's `TermPTY`/factory startup pattern,
+The test follows the production terminal library's `TermPTY`/factory startup pattern,
 without creating a window or terminal control. It starts two `cmd.exe` processes,
 waits up to 15 seconds for each terminal to become ready, and checks distinct
 PIDs and live processes. Closing the first factory must end its process while
