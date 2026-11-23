@@ -80,6 +80,10 @@ covers the visual design and application of the full launcher interaction.
 
 ## Phase 6: visual design and application
 
+The dashboard supports persisted drag ordering of projects and, independently
+for each project, launch actions. This is presentation order; it does not
+rewrite project configurations or change command execution.
+
 **Status: the latest requested navigation and terminal-tab revision is
 implemented. The user reported positive results for the requested manual
 checks; explicit design acceptance has not been separately stated.**

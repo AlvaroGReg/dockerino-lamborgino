@@ -16,6 +16,10 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<ProjectConfiguration> projects = [];
     private readonly IProjectConfigurationAdapter projectConfigurations;
     private readonly ProjectConfigurationService configurationService;
+    private readonly DisplayOrderStore displayOrder;
+    private readonly ObservableCollection<LaunchAction> displayedActions = [];
+    private Point dragStart;
+    private object? dragItem;
     private readonly LauncherWindow launcher;
     private bool exiting;
     private int resizeVersion;
@@ -34,6 +38,7 @@ public partial class MainWindow : Window
         }
         projectConfigurations = new CoreProjectConfigurationAdapter(storage);
         configurationService = new ProjectConfigurationService(storage);
+        displayOrder = new DisplayOrderStore(configurationService.StorageDirectory);
         InitializeComponent();
         GitRepositoriesPanel.Initialize(new CoreGitRepositoryAdapter(projectConfigurations));
         launchOrchestrator = new LaunchOrchestrator(new WindowSessionFactory(this));
@@ -97,7 +102,11 @@ public partial class MainWindow : Window
         var loaded = configurationService.List().Where(r => r.Project is not null && r.Issues.Count == 0)
             .Select(r => r.Project!).ToArray();
         projects.Clear();
-        foreach (var project in loaded) projects.Add(project);
+        IReadOnlyList<ProjectConfiguration> ordered = loaded;
+        try { ordered = DisplayOrderStore.Apply(loaded, displayOrder.Read(), p => p.Id); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        { StatusText.Text = $"Could not load project order: {ex.Message}"; }
+        foreach (var project in ordered) projects.Add(project);
         ProjectsList.SelectedItem = projects.FirstOrDefault(p => p.Id == selectedId);
         UpdateProjectDetails();
     }
@@ -109,6 +118,7 @@ public partial class MainWindow : Window
 
     private void ProjectsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.OriginalSource is System.Windows.Controls.TextBlock { Tag: ProjectConfiguration }) return;
         if (e.OriginalSource is not DependencyObject source ||
             System.Windows.Controls.ItemsControl.ContainerFromElement(ProjectsList, source) is not System.Windows.Controls.ListBoxItem item ||
             !item.IsSelected) return;
@@ -124,11 +134,102 @@ public partial class MainWindow : Window
         SelectedProjectPath.Text = project?.Directory ?? "";
         EditProjectButton.IsEnabled = project is not null;
         GitRepositoriesPanel.SetProject(project);
-        LaunchActionsList.ItemsSource = project?.Actions;
+        displayedActions.Clear();
+        if (project is not null)
+        {
+            IReadOnlyList<LaunchAction> ordered = project.Actions;
+            try { ordered = DisplayOrderStore.Apply(project.Actions, displayOrder.Read(project.Id), a => a.Id); }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+            { StatusText.Text = $"Could not load launch order: {ex.Message}"; }
+            foreach (var action in ordered) displayedActions.Add(action);
+        }
+        LaunchActionsList.ItemsSource = displayedActions;
         NoActionsText.Visibility = project is null || project.Actions.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         LaunchDescription.Text = project is null ? "" : $"{project.Actions.Count} launch action(s) configured.";
         if (project is null) StatusText.Text = "Choose a project to see its tools.";
         UpdateColumns();
+    }
+
+    private void OrderHandle_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: not null } handle) return;
+        dragStart = e.GetPosition(this);
+        dragItem = handle.Tag;
+        handle.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void OrderHandle_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (sender is not FrameworkElement handle || dragItem is null) return;
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            dragItem = null;
+            handle.ReleaseMouseCapture();
+            return;
+        }
+        var point = e.GetPosition(this);
+        if (Math.Abs(point.X - dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(point.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        var item = dragItem;
+        dragItem = null;
+        handle.ReleaseMouseCapture();
+        DragDrop.DoDragDrop(handle, item, DragDropEffects.Move);
+    }
+
+    private void OrderHandle_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        dragItem = null;
+        if (sender is FrameworkElement handle) handle.ReleaseMouseCapture();
+        e.Handled = true;
+    }
+
+    private void Order_DragOver(object sender, DragEventArgs e)
+    {
+        bool valid = sender == ProjectsList && e.Data.GetDataPresent(typeof(ProjectConfiguration)) ||
+            sender == LaunchActionsList && e.Data.GetDataPresent(typeof(LaunchAction));
+        e.Effects = valid ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private static int DropIndex(System.Windows.Controls.ItemsControl list, DragEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source ||
+            System.Windows.Controls.ItemsControl.ContainerFromElement(list, source) is not FrameworkElement container)
+            return list.Items.Count;
+        var index = list.ItemContainerGenerator.IndexFromContainer(container);
+        return index < 0 ? list.Items.Count : index + (e.GetPosition(container).Y >= container.ActualHeight / 2 ? 1 : 0);
+    }
+
+    private void Projects_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(typeof(ProjectConfiguration)) is not ProjectConfiguration item) return;
+        var reordered = projects.ToList();
+        if (!DisplayOrderStore.Move(reordered, item, DropIndex(ProjectsList, e))) return;
+        try
+        {
+            displayOrder.Save(reordered.Select(p => p.Id).ToArray());
+            projects.Move(projects.IndexOf(item), reordered.IndexOf(item));
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        { StatusText.Text = $"Could not save project order: {ex.Message}"; }
+        e.Handled = true;
+    }
+
+    private void Actions_Drop(object sender, DragEventArgs e)
+    {
+        if (ProjectsList.SelectedItem is not ProjectConfiguration project ||
+            e.Data.GetData(typeof(LaunchAction)) is not LaunchAction item) return;
+        var reordered = displayedActions.ToList();
+        if (!DisplayOrderStore.Move(reordered, item, DropIndex(LaunchActionsList, e))) return;
+        try
+        {
+            displayOrder.Save(reordered.Select(a => a.Id).ToArray(), project.Id);
+            displayedActions.Move(displayedActions.IndexOf(item), reordered.IndexOf(item));
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        { StatusText.Text = $"Could not save launch order: {ex.Message}"; }
+        e.Handled = true;
     }
 
     private void NewSession_Click(object sender, RoutedEventArgs e)

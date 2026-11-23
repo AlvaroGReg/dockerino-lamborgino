@@ -110,19 +110,26 @@ external requirements for their respective features in both variants.
 
 ## Register and configure a project in the UI
 
-Choose **Find project** and select one directory, or use **Manage projects…**
-to edit a saved project. Enter the project name and directory and edit the
-launch configuration as a JSON **array of actions**. `[]` saves a project
-without actions. Select **Review and save…** to inspect the values before
-confirming. Select a saved project and **Edit selected** to change it later.
+Choose **Add project** and select one directory, or select a saved project and
+open **Project instructions & configuration…**. Enter the project name and directory, then use the
+**Repositories** and **Actions** tabs to add explicit repositories and launch
+actions. Each action contains one or more processes, each with ordered command
+steps. A project can also be saved without actions. Select **Review and save…**
+to inspect the values before confirming. Select a saved project and
+**Edit selected** to change it later.
 Validation and storage errors appear in the window; a conflicting edit must be
 reloaded.
 
-Enter associated repository roots explicitly as a JSON array of absolute paths;
-these may be outside the project directory. Existing projects default to an
-empty array. Actions are displayed by name, color value, and description. For
+Choose associated repository roots explicitly; these may be outside the project
+directory. Existing projects without associations remain empty. Actions are
+displayed by name, color value, and description. For
 isolated testing, the application accepts
 `--project-storage <absolute-directory>` to override its default project store.
+
+In the dashboard, drag the handle next to a project or launch to reorder it.
+The order is saved separately from project configurations and restored on
+restart. Launch order is specific to each project; reordering does not run an
+action or change its commands.
 
 ## Configure projects with the CLI
 

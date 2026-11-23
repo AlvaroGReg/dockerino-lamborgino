@@ -47,17 +47,17 @@ dotnet run --project tests/DockerinoLamborgino.App.SequenceChecks/DockerinoLambo
 ## Interactive UI smoke tests
 
 Build the Debug app first. These UI Automation checks require an interactive
-Windows desktop and Windows PowerShell in STA mode:
+Windows desktop and PowerShell in STA mode:
 
 ```powershell
 powershell.exe -NoProfile -STA -File tests/UiSmoke/WindowAndTerminalSessionsUiSmoke.ps1
-powershell.exe -NoProfile -STA -File tests/UiSmoke/ProjectConfigurationPersistenceUiSmoke.ps1
+pwsh.exe -NoProfile -STA -File tests/UiSmoke/ProjectConfigurationPersistenceUiSmoke.ps1
 powershell.exe -NoProfile -STA -File tests/UiSmoke/GitRepositoryManagementUiSmoke.ps1
 ```
 
 `WindowAndTerminalSessionsUiSmoke.ps1` checks window controls and independent
 terminal-session state. `ProjectConfigurationPersistenceUiSmoke.ps1` exercises
-project creation, review and save, editing across an app restart, stale-revision
+editing a seeded project, review and save, editing across an app restart, stale-revision
 conflict handling, corrupt-file isolation, and verifies that saving does not run
 configured commands. `GitRepositoryManagementUiSmoke.ps1` covers Git repository
 management through the UI and also requires Git on `PATH`.

@@ -74,7 +74,8 @@
                                 AutomationProperties.Name="Open new terminal"/>
                         <ListBox x:Name="ProjectsList" SelectionChanged="ProjectsList_SelectionChanged"
                                  PreviewMouseLeftButtonDown="ProjectsList_PreviewMouseLeftButtonDown"
-                                 Background="Transparent" BorderThickness="0" Foreground="#D9E8E6">
+                                 Background="Transparent" BorderThickness="0" Foreground="#D9E8E6"
+                                 AllowDrop="True" DragOver="Order_DragOver" Drop="Projects_Drop">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="10,9"/>
@@ -97,10 +98,16 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{Binding Directory}" Foreground="#829D99" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
-                                    </StackPanel>
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left" Text="⋮⋮" Foreground="#89A6A3" FontSize="16" Margin="0,0,8,0"
+                                                   Cursor="SizeAll" ToolTip="Drag to reorder project" Tag="{Binding}"
+                                                   AutomationProperties.Name="Drag project to reorder"
+                                                   PreviewMouseLeftButtonDown="OrderHandle_MouseDown" PreviewMouseLeftButtonUp="OrderHandle_MouseUp" PreviewMouseMove="OrderHandle_MouseMove"/>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Directory}" Foreground="#829D99" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -119,17 +126,23 @@
                             <TextBlock Text="LAUNCHES" Style="{StaticResource SectionLabel}"/>
                             <TextBlock x:Name="NoActionsText" Text="No launch actions configured. Add them in project configuration."
                                        Foreground="#89A6A3" TextWrapping="Wrap" Margin="0,2,0,8"/>
-                            <ItemsControl x:Name="LaunchActionsList">
+                            <ItemsControl x:Name="LaunchActionsList" AllowDrop="True" DragOver="Order_DragOver" Drop="Actions_Drop">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Button Tag="{Binding}" Click="RunAction_Click" Loaded="LaunchActionButton_Loaded"
-                                                HorizontalContentAlignment="Stretch" Margin="0,3" Padding="12,9">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding Description}" Foreground="#D9E8E6" FontSize="10"
-                                                           TextWrapping="Wrap" Opacity="0.8" Margin="0,3,0,0"/>
-                                            </StackPanel>
-                                        </Button>
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Left" Text="⋮⋮" Foreground="#89A6A3" FontSize="16" Margin="0,3,8,3"
+                                                       VerticalAlignment="Center" Cursor="SizeAll" ToolTip="Drag to reorder launch" Tag="{Binding}"
+                                                       AutomationProperties.Name="Drag launch to reorder"
+                                                       PreviewMouseLeftButtonDown="OrderHandle_MouseDown" PreviewMouseLeftButtonUp="OrderHandle_MouseUp" PreviewMouseMove="OrderHandle_MouseMove"/>
+                                            <Button Tag="{Binding}" Click="RunAction_Click" Loaded="LaunchActionButton_Loaded"
+                                                    HorizontalContentAlignment="Stretch" Margin="0,3" Padding="12,9">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Description}" Foreground="#D9E8E6" FontSize="10"
+                                                               TextWrapping="Wrap" Opacity="0.8" Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DockPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

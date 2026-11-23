@@ -10,6 +10,8 @@ $store = Join-Path $base 'store'
 $project = Join-Path $base 'project'
 $marker = Join-Path $base 'command-executed.txt'
 $app = $null
+$previousPipeName = $env:DOCKERINO_PIPE_NAME
+$env:DOCKERINO_PIPE_NAME = 'Dockerino.UiSmoke.' + [guid]::NewGuid().ToString('N')
 
 function Find-Element($root, $property, $value) {
     $condition = [System.Windows.Automation.PropertyCondition]::new($property, $value)
@@ -66,11 +68,17 @@ function Window-ForProcess([string]$name) {
         [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Window)) }
     throw "Window not found: $name. Top-level: $(@($windows | ForEach-Object { $_.Current.Name }) -join ', '); nested: $(@($nested | ForEach-Object { $_.Current.Name }) -join ', ')"
 }
-function Start-TestApp {
+function Start-TestApp([string]$projectName = 'Phase3 original') {
     # An explicit absolute directory is the App's isolated storage contract.
     $script:app = Start-Process -FilePath $exe -ArgumentList @('--project-storage', "`"$store`"") -PassThru
     $main = Window-ForProcess 'dockerino-lamborgino'
-    Click (By-Name $main 'Manage projects…')
+    $projectItem = By-Name (By-Id $main 'ProjectsList') $projectName
+    if (-not $projectItem) { throw 'Seed project not found.' }
+    while ($projectItem.Current.ControlType -ne [System.Windows.Automation.ControlType]::ListItem) {
+        $projectItem = [System.Windows.Automation.TreeWalker]::ControlViewWalker.GetParent($projectItem)
+    }
+    $projectItem.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    Click (By-Name $main 'Project instructions & configuration…')
     Window-ForProcess 'Project configuration'
 }
 function Save-Draft($manager) {
@@ -106,34 +114,38 @@ function Stop-TestApp {
 
 try {
     New-Item -ItemType Directory -Path $store, $project -Force | Out-Null
+    $seedId = [guid]::NewGuid().ToString()
+    @{ id = $seedId; name = 'Phase3 original'; directory = $project; repositories = @(); actions = @() } |
+        ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $store "$seedId.json") -Encoding UTF8
     $manager = Start-TestApp
-    $actionId = [guid]::NewGuid().ToString()
-    $processId = [guid]::NewGuid().ToString()
-    $stepId = [guid]::NewGuid().ToString()
-    $actions = @(@{
-        id = $actionId; name = 'Marker action'; color = '#123456'; description = 'Must not execute'
-        processes = @(@{
-            id = $processId; name = 'Test process'; workingDirectory = $project
-            steps = @(@{ id = $stepId; command = "cmd /c echo executed > `"$marker`""; dependsOnSuccessOf = $null })
-        })
-    }) | ConvertTo-Json -Depth 10
-    # ConvertTo-Json unwraps single-element pipelines: preserve the array.
-    if (-not $actions.TrimStart().StartsWith('[')) { $actions = "[$actions]" }
+    Select-Project $manager 'Phase3 original'
+    Click (By-Name $manager 'Edit selected')
     Set-Value (By-Id $manager 'NameBox') 'Phase3 original'
     Set-Value (By-Id $manager 'DirectoryBox') $project
-    Set-Value (By-Id $manager 'ConfigurationBox') $actions
+    (By-Name $manager 'Actions').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    Click (By-Name $manager 'Add action')
+    Set-Value (By-Id $manager 'ActionNameBox') 'Marker action'
+    Set-Value (By-Id $manager 'ActionColorBox') '#123456'
+    Set-Value (By-Id $manager 'ActionDescriptionBox') 'Must not execute'
+    Click (By-Name $manager 'Add process')
+    Set-Value (By-Id $manager 'ProcessNameBox') 'Test process'
+    Set-Value (By-Id $manager 'WorkingDirectoryBox') $project
+    Click (By-Name $manager 'Add step')
+    Set-Value (By-Id $manager 'CommandBox') "cmd /c echo executed > `"$marker`""
     Save-Draft $manager
     Select-Project $manager 'Phase3 original'
-    $label = By-Name (By-Id $manager 'ActionsList') 'Marker action — #123456 — Must not execute'
-    if (-not $label) { throw 'Saved action not displayed.' }
     Click (By-Name $manager 'Edit selected')
+    $actionItem = By-Name (By-Id $manager 'ActionsList') 'Marker action'
+    while ($actionItem.Current.ControlType -ne [System.Windows.Automation.ControlType]::ListItem) {
+        $actionItem = [System.Windows.Automation.TreeWalker]::ControlViewWalker.GetParent($actionItem)
+    }
+    $actionItem.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
     Set-Value (By-Id $manager 'NameBox') 'Phase3 edited'
-    $editedActions = $actions.Replace('Marker action', 'Edited marker action')
-    Set-Value (By-Id $manager 'ConfigurationBox') $editedActions
+    Set-Value (By-Id $manager 'ActionNameBox') 'Edited marker action'
     Save-Draft $manager
     Select-Project $manager 'Phase3 edited'
     Click (By-Name $manager 'Edit selected')
-    if ((Value (By-Id $manager 'ConfigurationBox')) -notmatch 'Edited marker action') { throw 'Edited action was not persisted.' }
+    if (-not (By-Name (By-Id $manager 'ActionsList') 'Edited marker action')) { throw 'Edited action was not persisted.' }
     # Change the file behind the editor and verify the stale revision is rejected.
     $files = @(Get-ChildItem -LiteralPath $store -Filter '*.json' -File)
     if ($files.Count -ne 1) { throw "Expected exactly one saved project; found $($files.Count)." }
@@ -151,15 +163,17 @@ try {
     Stop-TestApp
     # A corrupt sibling must not suppress a valid project.
     Set-Content -LiteralPath (Join-Path $store 'broken.json') -Value '{' -Encoding UTF8
-    $manager = Start-TestApp
+    $manager = Start-TestApp 'Phase3 edited'
     Select-Project $manager 'Phase3 edited'
     if ((Value (By-Id $manager 'ErrorsBox')) -notmatch 'broken.json') { throw 'Corrupt project error was not displayed.' }
     Click (By-Name $manager 'Edit selected')
-    if ((Value (By-Id $manager 'ConfigurationBox')) -notmatch 'Edited marker action') { throw 'Restart lost edited action.' }
+    (By-Name $manager 'Actions').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    if (-not (By-Name (By-Id $manager 'ActionsList') 'Edited marker action')) { throw 'Restart lost edited action.' }
     Assert-NoMarker
-    'PASS: isolated create, review, save, edit, revision conflict, restart, action display, corrupt sibling, and no marker execution.'
+    'PASS: isolated action creation, review, save, edit, revision conflict, restart, action display, corrupt sibling, and no marker execution.'
 }
 finally {
     Stop-TestApp
+    $env:DOCKERINO_PIPE_NAME = $previousPipeName
     if (Test-Path -LiteralPath $base) { Remove-Item -LiteralPath $base -Recurse -Force }
 }
