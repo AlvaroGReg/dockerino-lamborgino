@@ -8,6 +8,7 @@ public sealed class LaunchCliSyntaxTests
     [Theory]
     [InlineData("launch", "start", "not-a-guid", "not-a-guid")]
     [InlineData("session", "stop", "00000000-0000-0000-0000-000000000000")]
+    [InlineData("projects", "refresh", "not-a-guid")]
     [InlineData("dashboard", "exit")]
     public void RejectsInvalidOperationsWithoutStartingApplication(params string[] args)
     {

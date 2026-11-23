@@ -64,6 +64,15 @@ public partial class MainWindow
                     view?.State is TerminalSessionState.Exited or TerminalSessionState.Failed or TerminalSessionState.Stopped ||
                     (view is null && process?.State is ManagedProcessState.Failed or ManagedProcessState.Stopped));
                 break;
+            case "projects.refresh":
+                var preferredProjectId = request.ProjectId is { } projectId && projectId != Guid.Empty
+                    ? projectId : (Guid?)null;
+                RefreshProjects(preferredProjectId);
+                var selectedProjectId = (ProjectsList.SelectedItem as ProjectConfiguration)?.Id;
+                if (preferredProjectId is not null && selectedProjectId != preferredProjectId)
+                    throw new KeyNotFoundException($"Project not found after refreshing: {preferredProjectId}");
+                result = new { refreshed = true, applicationRunning = true, projectCount = projects.Count, selectedProjectId };
+                break;
             case "dashboard.open":
                 ShowDashboard();
                 result = new { opened = true };

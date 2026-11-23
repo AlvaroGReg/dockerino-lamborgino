@@ -77,12 +77,12 @@ remain in later phases.
 
 ## Phase 5: configurable launches
 
-**Status: in progress; not yet accepted.** An initial UI/CLI launch path and
-in-memory coordinator have been added. Automated and isolated integration
-checks do not yet establish all requirements, including physical terminal
-interaction, exit-warning behavior, full validation and UI progress reporting.
-See [Phase 5 evidence](dockerino-lamborgino/PHASE-5-EVIDENCE.md) and
-[the application README](dockerino-lamborgino/README.md) for current limitations.
+**Status: completed and accepted by the user on 2026-11-21.** The user reports
+that Phase 5 tests have been completed successfully. Earlier automated and
+isolated integration results, plus the limitations recorded at that time, are
+preserved in [Phase 5 evidence](dockerino-lamborgino/PHASE-5-EVIDENCE.md);
+the user’s later confirmation is recorded there separately. The confirmation
+did not include individual test setups or results.
 
 - Run saved launch configurations in integrated interactive ConPTY terminals.
 - Expose launch, status, and session-management operations through the CLI as well as the UI, using managed project, action, and session identifiers.

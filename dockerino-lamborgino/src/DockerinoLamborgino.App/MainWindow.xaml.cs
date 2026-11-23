@@ -35,6 +35,7 @@ public partial class MainWindow : Window
         projectConfigurations = new CoreProjectConfigurationAdapter(storage);
         configurationService = new ProjectConfigurationService(storage);
         InitializeComponent();
+        GitRepositoriesPanel.Initialize(new CoreGitRepositoryAdapter(projectConfigurations));
         launchOrchestrator = new LaunchOrchestrator(new WindowSessionFactory(this));
         commandServer = new LocalCommandServer(DispatchCommandAsync);
         commandServer.Start();
@@ -121,18 +122,13 @@ public partial class MainWindow : Window
         var project = ProjectsList.SelectedItem as ProjectConfiguration;
         SelectedProjectName.Text = project?.Name ?? "Select a project";
         SelectedProjectPath.Text = project?.Directory ?? "";
-        EditProjectButton.IsEnabled = GitButton.IsEnabled = project is not null;
+        EditProjectButton.IsEnabled = project is not null;
+        GitRepositoriesPanel.SetProject(project);
         LaunchActionsList.ItemsSource = project?.Actions;
         NoActionsText.Visibility = project is null || project.Actions.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         LaunchDescription.Text = project is null ? "" : $"{project.Actions.Count} launch action(s) configured.";
         if (project is null) StatusText.Text = "Choose a project to see its tools.";
         UpdateColumns();
-    }
-
-    private void ManageGit_Click(object sender, RoutedEventArgs e)
-    {
-        if (ProjectsList.SelectedItem is not ProjectConfiguration project) return;
-        new GitWindow(projectConfigurations, new CoreGitWindowAdapter(projectConfigurations), project.Id.ToString()) { Owner = this }.ShowDialog();
     }
 
     private void NewSession_Click(object sender, RoutedEventArgs e)

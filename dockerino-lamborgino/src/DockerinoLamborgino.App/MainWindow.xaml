@@ -1,6 +1,7 @@
 <Window x:Class="DockerinoLamborgino.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:DockerinoLamborgino.App"
         Title="dockerino-lamborgino" Width="260" Height="720" MinWidth="250" MinHeight="460"
         WindowStyle="None" ResizeMode="CanResize" Background="#101A1D" Foreground="#D9E8E6"
         Icon="/DockerinoLamborgino.App;component/Assets/dockerino-lamborgino-icon.png"
@@ -45,9 +46,9 @@
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <DockPanel Margin="16,8">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button Content="—" ToolTip="Minimize" AutomationProperties.Name="Minimize dashboard" Click="Minimize_Click" Margin="2" Padding="9,4"/>
-                        <Button Content="□" ToolTip="Maximize or restore" AutomationProperties.Name="Maximize or restore dashboard" Click="Maximize_Click" Margin="2" Padding="9,4"/>
-                        <Button Content="×" ToolTip="Hide dashboard" AutomationProperties.Name="Hide dashboard" Click="Hide_Click" Margin="2" Padding="9,4"/>
+                        <Button Content="—" ToolTip="Minimize" AutomationProperties.Name="Minimize dashboard" Click="Minimize_Click" Margin="2" Width="34" Height="30" Padding="0"/>
+                        <Button Content="□" ToolTip="Maximize or restore" AutomationProperties.Name="Maximize or restore dashboard" Click="Maximize_Click" Margin="2" Width="34" Height="30" Padding="0"/>
+                        <Button Content="×" ToolTip="Hide dashboard" AutomationProperties.Name="Hide dashboard" Click="Hide_Click" Margin="2" Width="34" Height="30" Padding="0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="◒" Foreground="{StaticResource Accent}" FontSize="21" Margin="0,0,10,0"/>
@@ -114,8 +115,7 @@
                             <TextBlock x:Name="SelectedProjectPath" Foreground="#89A6A3" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,18"/>
                             <Button x:Name="EditProjectButton" Content="Project instructions &amp; configuration…" Click="ManageProjects_Click"
                                     HorizontalContentAlignment="Left" Margin="0,0,0,8" IsEnabled="False"/>
-                            <Button x:Name="GitButton" Content="Git management…" Click="ManageGit_Click"
-                                    HorizontalContentAlignment="Left" Margin="0,0,0,18" IsEnabled="False"/>
+                            <app:GitRepositoriesPanel x:Name="GitRepositoriesPanel" Margin="0,0,0,14"/>
                             <TextBlock Text="LAUNCHES" Style="{StaticResource SectionLabel}"/>
                             <TextBlock x:Name="NoActionsText" Text="No launch actions configured. Add them in project configuration."
                                        Foreground="#89A6A3" TextWrapping="Wrap" Margin="0,2,0,8"/>

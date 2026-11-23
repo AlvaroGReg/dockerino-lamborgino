@@ -1,9 +1,10 @@
 # dockerino-lamborgino
 
 Windows desktop application targeting .NET 10. Project registration, manual
-configuration, and explicitly requested Git operations are available through
-the UI and CLI. Phase 5 launch execution is under development and has not yet
-been accepted; see the limitations below.
+configuration, explicitly requested Git operations, and configurable launches
+are available through the UI and CLI. Phase 5 launch execution was completed
+and accepted by the user on 2026-11-21; see
+[Phase 5 evidence](PHASE-5-EVIDENCE.md).
 The dashboard uses a dark, muted-turquoise visual treatment, with a project
 list with new-terminal/add-project actions, selected-project tools shown only
 after selection, and terminal tabs shown when sessions exist. The window
@@ -74,6 +75,16 @@ from other projects. `list` can succeed while reporting issues for individual
 entries, so inspect each entry's `issues`. Exit codes are 0 for success, 1 for
 an operation error, and 2 for invalid CLI syntax.
 
+After creating or saving a project through the CLI, refresh the project list in
+the application. This does not show, restore, or activate the
+dashboard; a minimized application remains minimized. If the application is not
+running, the CLI starts it with only the floating launcher visible; the
+dashboard stays hidden. Pass the project ID to select it after refresh:
+
+```powershell
+dockerino-cli projects refresh [project-id]
+```
+
 Each project has a nonempty unique GUID `id`, `name`, existing absolute `directory`, and an
 optional `repositories` array of distinct existing absolute directory paths, and an
 `actions` array. Each action has a unique GUID `id`, `name`, `color` in
@@ -141,6 +152,7 @@ dockerino-cli session inspect <session-id>
 dockerino-cli session output <session-id>
 dockerino-cli session follow <session-id>
 dockerino-cli session stop <session-id>
+dockerino-cli projects refresh [project-id]
 dockerino-cli dashboard open
 ```
 
@@ -149,22 +161,24 @@ sessions are kept in memory for the application lifetime. Output includes raw
 terminal control sequences and is retained in memory. Stopping a session does
 not stop detached Docker containers.
 
-**Limitations:** Phase 5 remains in progress. The UI does not yet present
-complete per-step progress or launch controls, and environment validation does
-not identify all required tools before execution. PowerShell compound commands
-may not produce an unambiguous step exit status. Physical keyboard interaction,
-exit confirmation, live following and the complete UI/CLI workflow still need
-independent verification. See [Phase 6 evidence](PHASE-6-EVIDENCE.md) for the
-user's manual verification report.
+**Verification note:** Phase 5 was accepted by the user, who reports that its
+tests completed successfully. The earlier evidence below records the checks
+run on 2026-11-20 and their limitations at that time; the later confirmation
+did not include individual test setups or results. See
+[Phase 5 evidence](PHASE-5-EVIDENCE.md).
 
 ## Repository operations
 
-Use **Manage Git…** to select a saved project, inspect its associated
-repositories and their working-tree status, and switch a single local or
-remote branch. Select one or more repositories for explicit fetch or
-fast-forward-only pull. Results are reported individually. Repository paths
-must identify working-tree roots, not directories inside another repository.
-Projects without valid Git repositories remain available for configuration.
+The selected project's **Git repositories** expander appears inline in the
+project-tools column. Each associated repository has its own branch dropdown,
+with local and remote branches shown in separate groups, and Fetch/Pull icon
+buttons. Selecting a local or remote branch switches that one repository
+immediately; selecting a remote branch creates a local tracking branch when
+needed. Fetch and fast-forward-only pull are explicit, per-repository
+operations, and each row shows its working-tree status and operation result.
+Repository paths must identify working-tree roots, not directories inside
+another repository. Projects without valid Git repositories remain available
+for configuration.
 
 The CLI accepts the exact associated paths returned by `get`:
 

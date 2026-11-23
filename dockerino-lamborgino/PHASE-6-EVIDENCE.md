@@ -48,5 +48,6 @@ appearance, physical interaction, multi-monitor placement, position
 persistence, close/hide/restore, and exit confirmation with active sessions.
 The report did not provide individual test setups or results.
 
-Existing Phase 5 limitations remain; this report does not imply acceptance of
-that phase.
+Phase 5 was subsequently accepted by the user on 2026-11-21; see
+[Phase 5 evidence](PHASE-5-EVIDENCE.md). That acceptance was based on the
+user's report that its tests completed successfully.

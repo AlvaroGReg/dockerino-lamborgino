@@ -31,12 +31,15 @@ internal static class LocalCommands
             ["session", "output" or "follow", var value, "--offset", var offset]
                 when Id(value, out var id) && long.TryParse(offset, out var n) && n >= 0
                 => new("session.output", Id: id, Offset: n),
+            ["projects", "refresh"] => new("projects.refresh"),
+            ["projects", "refresh", var value] when Id(value, out var projectId)
+                => new("projects.refresh", ProjectId: projectId),
             ["dashboard", "open"] => new("dashboard.open"),
             _ => null
         };
         if (request is null)
         {
-            error.WriteLine("Usage: launch start <project-id> <action-id> | launch list | launch inspect|stop <launch-id> | session list | session inspect|stop <session-id> | session output|follow <session-id> [--offset <offset>] | dashboard open");
+            error.WriteLine("Usage: projects refresh [project-id] | launch start <project-id> <action-id> | launch list | launch inspect|stop <launch-id> | session list | session inspect|stop <session-id> | session output|follow <session-id> [--offset <offset>] | dashboard open");
             return 2;
         }
 
