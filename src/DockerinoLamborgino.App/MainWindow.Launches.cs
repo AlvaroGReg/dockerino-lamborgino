@@ -96,14 +96,22 @@ public partial class MainWindow
                 window.managedViews.Add(request.SessionId, view);
                 window.TerminalHost.Children.Add(view);
                 var item = new SessionItem(request.SessionId, request.ProcessName, view);
+                item.ProjectId = request.ProjectId;
+                item.State = view.State;
                 window.sessions.Add(item);
+                view.StateChanged += state =>
+                {
+                    item.State = state;
+                    window.RefreshStatusIndicators();
+                };
                 view.StatusChanged += status =>
                 {
                     item.Status = status;
-                    window.SessionsList.Items.Refresh();
+                    window.RefreshStatusIndicators();
                     if (window.SessionsList.SelectedItem == item) window.StatusText.Text = status;
                 };
                 window.SessionsList.SelectedItem = item;
+                window.UpdateStatusIndicators();
                 window.ShowTerminalPanel();
                 return new WindowLaunchSession(view, request.WorkingDirectory);
             }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken);

@@ -62,7 +62,7 @@
             </DockPanel>
             <TextBlock x:Name="NoRepositoriesText" Text="No Git repositories are associated with this project."
                        Foreground="#89A6A3" TextWrapping="Wrap" Margin="0,2,0,6" Visibility="Collapsed"/>
-            <ItemsControl x:Name="Repositories">
+            <ItemsControl x:Name="Repositories" AutomationProperties.Name="Associated Git repositories">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border BorderBrush="#29413F" BorderThickness="1" CornerRadius="4"
@@ -80,9 +80,10 @@
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                ToolTip="{Binding Path}" VerticalAlignment="Center"/>
                                 </DockPanel>
-                                <TextBlock Text="{Binding BranchSummary}" Foreground="#89A6A3" FontSize="10"
+                                <TextBlock x:Name="BranchSummary" Text="{Binding BranchSummary}" Foreground="#89A6A3" FontSize="10"
                                            TextWrapping="Wrap" Margin="0,4,0,3"/>
-                                <ComboBox ItemsSource="{Binding BranchChoices}" SelectedItem="{Binding SelectedBranch, Mode=OneWay}"
+                                <ComboBox x:Name="BranchSelector" AutomationProperties.Name="Repository branches"
+                                          ItemsSource="{Binding BranchChoices}" SelectedItem="{Binding SelectedBranch, Mode=OneWay}"
                                           Tag="{Binding}" DropDownClosed="Branch_DropDownClosed"
                                           IsEnabled="{Binding CanSwitch}" ToolTip="Selecting a branch switches immediately">
                                     <ComboBox.ItemTemplate>
@@ -101,7 +102,7 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <TextBlock Text="{Binding Status}" Foreground="#A8C2BE" FontSize="10"
+                                <TextBlock x:Name="RepositoryStatus" Text="{Binding Status}" Foreground="#A8C2BE" FontSize="10"
                                            TextWrapping="Wrap" Margin="0,4,0,0"/>
                                 <TextBlock Text="{Binding OperationMessage}" Foreground="#E5C27B" FontSize="10"
                                            TextWrapping="Wrap" Margin="0,3,0,0"/>

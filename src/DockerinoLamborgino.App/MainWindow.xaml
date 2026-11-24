@@ -122,6 +122,9 @@
                                                    Cursor="SizeAll" ToolTip="Drag to reorder project" Tag="{Binding}"
                                                    AutomationProperties.Name="Drag project to reorder"
                                                    PreviewMouseLeftButtonDown="OrderHandle_MouseDown" PreviewMouseLeftButtonUp="OrderHandle_MouseUp" PreviewMouseMove="OrderHandle_MouseMove"/>
+                                        <TextBlock x:Name="ProjectStatusIndicator" Text="●" FontSize="11"
+                                                   VerticalAlignment="Center" Margin="0,0,7,0"
+                                                   Visibility="Collapsed" Loaded="StatusIndicator_Loaded"/>
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"/>
                                     </DockPanel>
@@ -152,6 +155,7 @@
                                                        AutomationProperties.Name="Drag launch to reorder"
                                                        PreviewMouseLeftButtonDown="OrderHandle_MouseDown" PreviewMouseLeftButtonUp="OrderHandle_MouseUp" PreviewMouseMove="OrderHandle_MouseMove"/>
                                             <Button Tag="{Binding}" Click="RunAction_Click" Loaded="LaunchActionButton_Loaded"
+                                                    AutomationProperties.Name="{Binding Name}"
                                                     HorizontalContentAlignment="Stretch" Margin="0,3" Padding="12,9">
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
@@ -178,7 +182,8 @@
                     <Button x:Name="NewTerminalTabButton" DockPanel.Dock="Right" Content="+" ToolTip="Open new terminal"
                                 AutomationProperties.Name="Open new terminal" Width="34" Height="32" Padding="0"
                                 FontSize="18" Click="NewSession_Click"/>
-                        <ListBox x:Name="SessionsList" SelectionChanged="SessionsList_SelectionChanged"
+                        <ListBox x:Name="SessionsList" AutomationProperties.Name="Terminal sessions"
+                                 SelectionChanged="SessionsList_SelectionChanged"
                                  Background="Transparent" BorderThickness="0" Foreground="#D9E8E6"
                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
@@ -206,6 +211,9 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <DockPanel Margin="9,5,5,5">
+                                        <TextBlock x:Name="SessionStatusIndicator" DockPanel.Dock="Left" Text="●"
+                                                   FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"
+                                                   Visibility="Collapsed" Loaded="StatusIndicator_Loaded"/>
                                         <Button DockPanel.Dock="Right" Content="×" Tag="{Binding}" Click="CloseSessionTab_Click"
                                                 ToolTip="Close tab and stop its process" AutomationProperties.Name="Close terminal tab"
                                                 Width="22" Height="22" Padding="0" Margin="8,0,0,0"

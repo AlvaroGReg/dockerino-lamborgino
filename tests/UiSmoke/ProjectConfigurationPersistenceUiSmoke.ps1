@@ -72,17 +72,30 @@ function Start-TestApp([string]$projectName = 'Phase3 original') {
     # An explicit absolute directory is the App's isolated storage contract.
     $script:app = Start-Process -FilePath $exe -ArgumentList @('--project-storage', "`"$store`"") -PassThru
     $main = Window-ForProcess 'dockerino-lamborgino'
-    $projectItem = By-Name (By-Id $main 'ProjectsList') $projectName
-    if (-not $projectItem) { throw 'Seed project not found.' }
+    $projectItem = $null
+    for ($i = 0; $i -lt 100 -and -not $projectItem; $i++) {
+        # Reacquire the virtualized list while the dashboard finishes loading.
+        $projectList = Find-Element $main ([System.Windows.Automation.AutomationElement]::AutomationIdProperty) 'ProjectsList'
+        if ($projectList) {
+            $projectItem = Find-Element $projectList ([System.Windows.Automation.AutomationElement]::NameProperty) $projectName
+        }
+        if (-not $projectItem) { Start-Sleep -Milliseconds 100 }
+    }
+    if (-not $projectItem) {
+        $names = @($projectList.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.Condition]::TrueCondition) |
+            ForEach-Object { $_.Current.Name } | Where-Object { $_ })
+        throw "Seed project not found: $projectName. Visible project-list names: $($names -join ', ')"
+    }
     while ($projectItem.Current.ControlType -ne [System.Windows.Automation.ControlType]::ListItem) {
         $projectItem = [System.Windows.Automation.TreeWalker]::ControlViewWalker.GetParent($projectItem)
     }
     $projectItem.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-    Click (By-Name $main 'Project instructions & configuration…')
-    Window-ForProcess 'Project configuration'
+    Click (By-Id $main 'EditProjectButton')
+    Window-ForProcess 'Project instructions & configuration'
 }
 function Save-Draft($manager) {
-    Click (By-Name $manager 'Review and save…')
+    Click (By-Id $manager 'ReviewAndSaveButton')
     $review = Window-ForProcess 'Review before saving'
     Click (By-Name $review 'Save')
     for ($i = 0; $i -lt 100; $i++) {
@@ -113,10 +126,15 @@ function Stop-TestApp {
 }
 
 try {
+    $projectFile = Join-Path $repoRoot 'src\DockerinoLamborgino.App\DockerinoLamborgino.App.csproj'
+    & dotnet build $projectFile -c Debug --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'Application build failed.' }
     New-Item -ItemType Directory -Path $store, $project -Force | Out-Null
     $seedId = [guid]::NewGuid().ToString()
-    @{ id = $seedId; name = 'Phase3 original'; directory = $project; repositories = @(); actions = @() } |
-        ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $store "$seedId.json") -Encoding UTF8
+    $seed = @{ id = $seedId; name = 'Phase3 original'; directory = $project; repositories = @(); actions = @() } |
+        ConvertTo-Json -Depth 10
+    [System.IO.File]::WriteAllText(
+        (Join-Path $store "$seedId.json"), $seed, [System.Text.UTF8Encoding]::new($false))
     $manager = Start-TestApp
     Select-Project $manager 'Phase3 original'
     Click (By-Name $manager 'Edit selected')
@@ -152,7 +170,7 @@ try {
     $external = [System.IO.File]::ReadAllText($files[0].FullName).Replace('Must not execute', 'External change')
     [System.IO.File]::WriteAllText($files[0].FullName, $external)
     Set-Value (By-Id $manager 'NameBox') 'Stale edit'
-    Click (By-Name $manager 'Review and save…')
+    Click (By-Id $manager 'ReviewAndSaveButton')
     Click (By-Name (Window-ForProcess 'Review before saving') 'Save')
     $status = Value (By-Id $manager 'ErrorsBox')
     if ($status -notmatch 'changed or already exists') { throw "Expected revision conflict, got: $status" }

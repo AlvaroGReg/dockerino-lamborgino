@@ -24,7 +24,7 @@ feedback.
 | Project registration/configuration | Implemented | Automated verification and user acceptance reported. | [Product/configuration](specs/product-and-configuration.md) |
 | Git associations and operations | Implemented | User acceptance and some edge-case verification remain outstanding. | [Git](specs/git-repositories.md) |
 | Configurable launches and CLI session control | Implemented | User reported successful Phase 5 tests on 2026-11-21; individual setups/results were not provided. | [Launches and sessions](specs/launches-and-sessions.md) |
-| Dashboard/navigation revisions | Latest requested revision implemented | User reported positive manual checks; explicit design acceptance was not separately stated. | [Desktop experience](specs/desktop-experience.md) |
+| Dashboard/navigation revisions | Latest requested revision implemented, including terminal-status color indicators | Current UI smoke scripts pass for terminal lifecycle, project configuration, and inline Git workflows. Terminal status color rendering still needs visual acceptance; explicit design acceptance was not separately stated. | [Desktop experience](specs/desktop-experience.md) |
 | Delivery hardening | Partial | Release checklist and environment-specific checks remain. | [Quality and delivery](specs/quality-and-delivery.md) |
 
 ## Remaining work
@@ -44,6 +44,9 @@ feedback.
 6. Run the release checklist in
    [quality and delivery](specs/quality-and-delivery.md) and record environment,
    outcomes, and any unresolved gaps here.
+7. Visually verify terminal-status colors and accessible labels for terminal
+   tabs, project rows, and the floating launcher, including error precedence and
+   indicator clearing. See `RUN-017`, `UI-015`, and `UI-016`.
 
 ## Change workflow
 

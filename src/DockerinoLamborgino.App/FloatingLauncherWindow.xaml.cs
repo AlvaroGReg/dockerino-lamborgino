@@ -23,6 +23,23 @@ public partial class LauncherWindow : Window
     public event Action? OpenRequested;
     public event Action? ExitRequested;
 
+    public void SetTerminalStatus(bool hasError, bool isLoading)
+    {
+        var (fill, stroke, description) = hasError
+            ? ("#E8B83F3F", "#FFFF7777", "Terminal status: error")
+            : isLoading
+                ? ("#E8B88724", "#FFFFD166", "Terminal status: loading")
+                : ("#E82E6968", "#FF76B4AD", "Terminal status: normal");
+        Body.Fill = (Brush)new BrushConverter().ConvertFromString(fill)!;
+        Body.Stroke = (Brush)new BrushConverter().ConvertFromString(stroke)!;
+        Glow.Fill = Body.Stroke;
+        Title = description;
+        Body.ToolTip = description;
+        Surface.ToolTip = description;
+        System.Windows.Automation.AutomationProperties.SetName(this, description);
+        System.Windows.Automation.AutomationProperties.SetName(Surface, description);
+    }
+
     public LauncherWindow() : this(null) { }
 
     /// <param name="positionFile">Optional absolute path for launcher-only state.</param>

@@ -266,7 +266,9 @@ npx skills add AlvaroGReg/alvarogreg-skills --skill dockerino-lamborgino-cli
 The project-registration, configuration, Git, and configurable-launch
 workflows are implemented. The UI uses a dark, muted-turquoise theme; the
 dashboard shows project tools after project selection and terminal tabs when
-sessions exist.
+sessions exist. Terminal tabs, project rows, and the floating launcher use amber
+for starting sessions and red for failures; project and launcher summaries clear
+when their relevant sessions no longer need attention.
 
 The terminal integration uses EasyWindowsTerminalControl 1.0.38 (declared MIT)
 and depends directly on CI.Microsoft.Terminal.Wpf and

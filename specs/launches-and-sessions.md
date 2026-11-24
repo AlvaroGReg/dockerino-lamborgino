@@ -55,6 +55,13 @@ and UI acceptance evidence remains environment-dependent; see
 - **RUN-016 — Docker boundary (Implemented/documented).** Stopping a terminal
   stops its managed client process tree, not detached containers owned by the
   Docker daemon. Docker container cleanup is not implicit.
+- **RUN-017 — Terminal status indicators (Implemented).** A terminal tab shows a
+  loading indicator while its terminal is starting, and an error indicator
+  when that session has failed. The terminal indicator represents that
+  session's own state; loading ends when terminal startup completes, not when
+  configured commands finish. Sessions opened with **New terminal** have no
+  project association. Loading and error are also distinguished by color
+  (amber and red respectively); the indicator has an accessible tooltip.
 
 ## 3. CLI contract
 
@@ -133,6 +140,9 @@ projects refresh [project-id]
    to stop detached containers.
 10. Verify missing directories, shell, terminal components, and selected-action
     tools produce actionable errors without triggering installation.
+11. Verify a terminal tab shows loading only during terminal startup, shows
+    error after that session fails, and does not inherit another session's
+    state.
 
 ## 6. Verification references and gaps
 

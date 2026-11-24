@@ -154,6 +154,74 @@ public partial class MainWindow : Window
         UpdateColumns();
     }
 
+    private void UpdateStatusIndicators()
+    {
+        bool HasError(IEnumerable<SessionItem> items) =>
+            items.Any(item => item.State == TerminalSessionState.Failed);
+        bool IsLoading(IEnumerable<SessionItem> items) =>
+            items.Any(item => item.State == TerminalSessionState.Starting);
+
+        foreach (var item in sessions)
+        {
+            var container = SessionsList.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.ListBoxItem;
+            if (container is null || FindVisualChild(container, "SessionStatusIndicator") is not { } indicator)
+                continue;
+            SetIndicator(indicator, item.State == TerminalSessionState.Failed, item.State == TerminalSessionState.Starting);
+        }
+
+        foreach (var project in projects)
+        {
+            var container = ProjectsList.ItemContainerGenerator.ContainerFromItem(project) as System.Windows.Controls.ListBoxItem;
+            if (container is null || FindVisualChild(container, "ProjectStatusIndicator") is not { } indicator)
+                continue;
+            var associated = sessions.Where(item => item.ProjectId == project.Id);
+            SetIndicator(indicator, HasError(associated), IsLoading(associated));
+        }
+
+        launcher.SetTerminalStatus(HasError(sessions), IsLoading(sessions));
+    }
+
+    private static System.Windows.Controls.TextBlock? FindVisualChild(DependencyObject parent, string name)
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is System.Windows.Controls.TextBlock textBlock && textBlock.Name == name)
+                return textBlock;
+            if (FindVisualChild(child, name) is { } nested)
+                return nested;
+        }
+        return null;
+    }
+
+    private static void SetIndicator(System.Windows.Controls.TextBlock indicator, bool hasError, bool isLoading)
+    {
+        if (!hasError && !isLoading)
+        {
+            indicator.Visibility = Visibility.Collapsed;
+            indicator.ToolTip = null;
+            System.Windows.Automation.AutomationProperties.SetName(indicator, "Terminal status: normal");
+            return;
+        }
+
+        var color = hasError ? "#FFFF7777" : "#FFFFD166";
+        var label = hasError ? "Error" : "Loading";
+        indicator.Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter()
+            .ConvertFromString(color)!;
+        indicator.ToolTip = $"Terminal status: {label.ToLowerInvariant()}";
+        indicator.Visibility = Visibility.Visible;
+        System.Windows.Automation.AutomationProperties.SetName(indicator, $"Terminal status: {label}");
+    }
+
+    private void RefreshStatusIndicators()
+    {
+        SessionsList.Items.Refresh();
+        ProjectsList.Items.Refresh();
+        UpdateStatusIndicators();
+    }
+
+    private void StatusIndicator_Loaded(object sender, RoutedEventArgs e) => UpdateStatusIndicators();
+
     private void OrderHandle_MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { Tag: not null } handle) return;
@@ -259,15 +327,23 @@ public partial class MainWindow : Window
         sessionId = info.Id;
         foreach (var state in pending) Report(state);
         var item = new SessionItem(info.Id, $"Terminal {sessions.Count + 1}", view);
+        item.ProjectId = null;
         item.Status = view.Status;
+        item.State = view.State;
         sessions.Add(item);
+        view.StateChanged += state =>
+        {
+            item.State = state;
+            RefreshStatusIndicators();
+        };
         view.StatusChanged += status =>
         {
             item.Status = status;
-            SessionsList.Items.Refresh();
+            RefreshStatusIndicators();
             if (SessionsList.SelectedItem == item) StatusText.Text = status;
         };
         SessionsList.SelectedItem = item;
+        UpdateStatusIndicators();
         ShowTerminalPanel();
     }
 
@@ -355,6 +431,7 @@ public partial class MainWindow : Window
         }
         sessions.Remove(item);
         TerminalHost.Children.Remove(item.View);
+        RefreshStatusIndicators();
         if (wasSelected) SessionsList.SelectedItem = sessions.LastOrDefault();
         UpdateTerminalPanel();
     }
@@ -448,5 +525,7 @@ public partial class MainWindow : Window
         public TerminalSessionView View { get; } = view;
         public string Name { get; } = name;
         public string Status { get; set; } = "Starting";
+        public Guid? ProjectId { get; set; }
+        public TerminalSessionState? State { get; set; }
     }
 }

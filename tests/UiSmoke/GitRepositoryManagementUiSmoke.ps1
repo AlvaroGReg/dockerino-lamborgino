@@ -14,6 +14,8 @@ $app = $null
 $oldGitGlobal = $env:GIT_CONFIG_GLOBAL
 $oldGitSystem = $env:GIT_CONFIG_NOSYSTEM
 $oldTerminalPrompt = $env:GIT_TERMINAL_PROMPT
+$oldPipeName = $env:DOCKERINO_PIPE_NAME
+$env:DOCKERINO_PIPE_NAME = 'Dockerino.GitUiSmoke.' + [guid]::NewGuid().ToString('N')
 
 function Git([string]$directory, [string[]]$gitArgs) {
     $output = & git.exe -C $directory @gitArgs 2>&1
@@ -38,6 +40,12 @@ function Find-Name($parent, [string]$name) {
     $condition = New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::NameProperty, $name)
     return $parent.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+}
+function Find-NameLike($parent, [string]$pattern) {
+    $all = $parent.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.Condition]::TrueCondition)
+    foreach ($item in $all) { if ($item.Current.Name -like $pattern) { return $item } }
+    return $null
 }
 function Invoke-Button($element) {
     $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
@@ -88,71 +96,58 @@ try {
     [IO.File]::WriteAllText((Join-Path $store "$firstId.json"), $firstJson, $utf8)
     [IO.File]::WriteAllText((Join-Path $store "$secondId.json"), $secondJson, $utf8)
 
-    $project = Join-Path $PSScriptRoot '..\src\DockerinoLamborgino.App\DockerinoLamborgino.App.csproj'
+    $project = Join-Path $PSScriptRoot '..\..\src\DockerinoLamborgino.App\DockerinoLamborgino.App.csproj'
     & dotnet build $project --nologo "-p:OutputPath=$output\"
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
     $exe = Join-Path $output 'DockerinoLamborgino.App.exe'
     $app = Start-Process -FilePath $exe -ArgumentList @('--project-storage', "`"$store`"") -PassThru
     $desktop = [System.Windows.Automation.AutomationElement]::RootElement
     $main = Wait-For {
-        $all = $desktop.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-            (New-Object System.Windows.Automation.PropertyCondition(
-                [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $app.Id)))
-        foreach ($window in $all) { if ($window.Current.Name -eq 'dockerino-lamborgino') { return $window } }
-    } 'main window'
-    $open = Wait-For { Find-Name $main ("Manage Git" + [char]0x2026) } 'Manage Git button'
-    Invoke-Button $open
-    $window = Wait-For {
-        $all = $desktop.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-            (New-Object System.Windows.Automation.PropertyCondition(
-                [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $app.Id)))
-        foreach ($item in $all) { if ($item.Current.Name -eq 'Git repositories') { return $item } }
-    } 'Git window'
-    $projects = Wait-For { Find-Id $window 'Projects' } 'project selector'
-    $projects.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-    Select-Item (Wait-For { Find-Name $window 'Smoke project' } 'Smoke project option')
-    $repositories = Wait-For { Find-Id $window 'Repositories' } 'repository list'
-    $repoItem = Wait-For { Find-Name $repositories $repo } 'repository item'
-    # The path can be exposed as a TextBlock inside the selectable ListBoxItem.
-    $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
-    while ($repoItem -and $repoItem.Current.ControlType -ne [System.Windows.Automation.ControlType]::ListItem) {
-        $repoItem = $walker.GetParent($repoItem)
-    }
-    Require ($null -ne $repoItem) 'Repository list item was not selectable.'
-    Select-Item $repoItem
-    $status = Wait-For { Find-Id $window 'Status' } 'status field'
-    Wait-For { if ((Text-Value $status) -match 'untracked\.txt') { return $true } } 'untracked status' | Out-Null
-    $local = Find-Id $window 'LocalBranches'
-    $remote = Find-Id $window 'RemoteBranches'
-    Wait-For { Find-Name $local 'main' } 'local main branch' | Out-Null
-    $feature = Wait-For { Find-Name $local 'feature' } 'local feature branch'
-    Wait-For { Find-Name $remote 'origin/remote-feature' } 'remote branch' | Out-Null
+        $condition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $app.Id)
+        $windows = $desktop.FindAll([System.Windows.Automation.TreeScope]::Children, $condition)
+        foreach ($item in $windows) { if ($item.Current.Name -eq 'dockerino-lamborgino') { return $item } }
+    } 'dashboard window'
+
+    # Git is an inline project tool, not a separate window. Select the fixture
+    # project before opening its repository expander.
+    Select-Item (Wait-For { Find-Name (Find-Id $main 'ProjectsList') 'Smoke project' } 'Smoke project row')
+    $expander = Wait-For { Find-Id $main 'GitExpander' } 'Git repositories expander'
+    $expander.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+    $repositories = Wait-For { Find-Id $main 'Repositories' } 'associated repository list'
+    $repoName = Wait-For { Find-Name $repositories 'Smoke project (project)' } 'repository entry'
+    $branchSummary = Wait-For { Find-Name $repositories 'Current branch: main' } 'current branch summary'
+    Wait-For { Find-NameLike $repositories '*untracked.txt*' } 'untracked file status' | Out-Null
+
+    $branches = Wait-For { Find-Id $repositories 'BranchSelector' } 'repository branch selector'
+    $branches.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+    $feature = Wait-For {
+        $items = $branches.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+            [System.Windows.Automation.Condition]::TrueCondition)
+        foreach ($item in $items) { if ($item.Current.Name -match 'feature$') { return $item } }
+    } 'local feature branch option'
     Select-Item $feature
-    Invoke-Button (Find-Id $window 'SwitchButton')
-    Wait-For { if ((Git $repo @('branch', '--show-current')) -eq 'feature') { return $true } } 'Git switch to feature' | Out-Null
-    $refresh = Find-Id $window 'RefreshButton'
-    Wait-For { if ($refresh.Current.IsEnabled) { return $true } } 'switch refresh completion' | Out-Null
-    Require ((Text-Value $status) -match 'untracked\.txt') 'Status was not retained after switch.'
-    Invoke-Button $refresh
-    Wait-For { if ($refresh.Current.IsEnabled) { return $true } } 'manual refresh completion' | Out-Null
-    Require ($null -ne (Find-Name $local 'feature')) 'Local branch missing after refresh.'
-    Require ($null -ne (Find-Name $remote 'origin/remote-feature')) 'Remote branch missing after refresh.'
-    Require ((Text-Value $status) -match 'untracked\.txt') 'Status missing after refresh.'
-    $projects.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-    $smokeOption = Wait-For { Find-Name $window 'Smoke project' } 'selected project option'
-    $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
-    $selectionPattern = $null
-    while ($smokeOption -and -not $smokeOption.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern, [ref]$selectionPattern)) {
-        $smokeOption = $walker.GetParent($smokeOption)
-    }
-    Require ($null -ne $selectionPattern -and $selectionPattern.Current.IsSelected) 'Project selection was not preserved.'
-    Select-Item (Wait-For { Find-Name $window 'Empty project' } 'Empty project option')
-    Wait-For { if ($refresh.Current.IsEnabled) { return $true } } 'empty project load' | Out-Null
-    Require ($null -eq (Find-Name $repositories $repo)) 'Repository from previous project remained visible.'
-    $projects.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-    Select-Item (Wait-For { Find-Name $window 'Smoke project' } 'Smoke project option again')
-    Wait-For { Find-Name $repositories $repo } 'repository after reselecting project' | Out-Null
-    Write-Host 'PASS: project selection, status, distinct local/remote branch lists, local switch, refresh, and project reselection.'
+    Wait-For { (Git $repo @('branch', '--show-current')) -eq 'feature' } 'branch switch to feature' | Out-Null
+    Wait-For { Find-Name $repositories 'Current branch: feature' } 'updated current branch' | Out-Null
+    Wait-For { Find-NameLike $repositories '*untracked.txt*' } 'untracked status after branch switch' | Out-Null
+
+    Invoke-Button (Wait-For { Find-Id $main 'RefreshButton' } 'Git refresh button')
+    Wait-For {
+        $button = Find-Id $main 'RefreshButton'
+        if ($button -and $button.Current.IsEnabled) { return $true }
+    } 'manual Git refresh completion' | Out-Null
+    Require ($null -ne (Find-Name $repositories 'Current branch: feature')) 'Refresh lost the selected branch.'
+    Require ($null -ne (Find-NameLike $repositories '*untracked.txt*')) 'Refresh lost the untracked-file status.'
+
+    Select-Item (Wait-For { Find-Name (Find-Id $main 'ProjectsList') 'Empty project' } 'empty project row')
+    Wait-For {
+        if (Find-Name $main 'No Git repositories are associated with this project.') { return $true }
+    } 'empty project repository state' | Out-Null
+    Require ($null -eq (Find-Name (Find-Id $main 'Repositories') 'Smoke project (project)')) `
+        'The previous project repository remained visible.'
+    Select-Item (Wait-For { Find-Name (Find-Id $main 'ProjectsList') 'Smoke project' } 'reselected project row')
+    Wait-For { Find-Name (Find-Id $main 'Repositories') 'Smoke project (project)' } 'repository after project reselection' | Out-Null
+    Write-Host 'PASS: inline Git panel, project-scoped repository status, branch selector, local branch switch, refresh, and project reselection.'
 }
 finally {
     if ($app -and -not $app.HasExited) {
@@ -162,5 +157,6 @@ finally {
     $env:GIT_CONFIG_GLOBAL = $oldGitGlobal
     $env:GIT_CONFIG_NOSYSTEM = $oldGitSystem
     $env:GIT_TERMINAL_PROMPT = $oldTerminalPrompt
+    $env:DOCKERINO_PIPE_NAME = $oldPipeName
     if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
 }
