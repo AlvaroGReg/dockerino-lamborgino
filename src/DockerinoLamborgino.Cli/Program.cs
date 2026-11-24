@@ -9,6 +9,45 @@ public static class Program
 
     public static int Run(string[] args, TextWriter output, TextWriter error, string? storageDirectory = null)
     {
+        if (args is ["--version"])
+        {
+            output.WriteLine(typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown");
+            return 0;
+        }
+
+        if (args is ["--help"])
+        {
+            output.WriteLine("""
+                Usage: dockerino <command>
+
+                Projects and configuration:
+                  register <name> <absolute-directory>
+                  list
+                  get <project-id>
+                  validate <json-file>
+                  save <json-file> [expected-revision]
+                  projects refresh [project-id]
+
+                Git repositories:
+                  git fetch|pull <project-id> <repository-path> [repository-path ...]
+
+                Launches and sessions:
+                  launch start <project-id> <action-id>
+                  launch list
+                  launch inspect|stop <launch-id>
+                  session list
+                  session inspect|stop|reset <session-id>
+                  session output|follow <session-id> [--offset <offset>]
+                  reset
+                  dashboard open
+
+                Options:
+                  --help  Show this help.
+                  --version  Show the CLI version.
+                """);
+            return 0;
+        }
+
         var service = new ProjectConfigurationService(storageDirectory);
         void Print(object value) => output.WriteLine(JsonSerializer.Serialize(value, ProjectConfigurationService.JsonOptions));
         try

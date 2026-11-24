@@ -50,6 +50,25 @@
 - **REL-024 — In-memory runtime state.** Active launches, sessions, and output
   are not persisted across app restarts. Project configuration and dashboard
   ordering are persisted.
+- **REL-025 — Windows installer (Planned).** Distribute the desktop application
+  and CLI together in one Windows x64 installer, with .NET 10 included so a
+  separate .NET installation is not required. Make `dockerino` available from
+  a new terminal and ensure the application and CLI can locate each other.
+  PowerShell 7 and Git are external dependencies, not bundled components.
+  Windows ARM64 packaging is deferred.
+- **REL-026 — WinGet distribution and upgrades (Planned).** Publish the
+  installer through WinGet and distribute subsequent versions as WinGet
+  upgrades under `AlvaroGReg.DockerinoLamborgino`, subject to repository
+  acceptance. Declare `Microsoft.PowerShell` and `Git.Git` as package
+  dependencies; verify detection and installation behavior. Do not rely on
+  automatic updates being enabled on the user's computer.
+- **REL-027 — Upgrade safety (Planned).** An upgrade replaces the installed
+  application and CLI without deleting user project configuration or dashboard
+  ordering. If the app is running, ask the user to close it before an interactive
+  upgrade and explain that closing it stops its managed sessions, but not
+  detached Docker containers. For a non-interactive upgrade, fail safely with
+  an actionable result rather than closing the app or waiting for input.
+  Unattended upgrades must succeed when the app is not running.
 
 ## 4. Verification policy
 
@@ -96,3 +115,7 @@
    variants.
 7. Record which checks ran, the environment, results, and remaining gaps in
    `plan.md`; do not mark a requirement accepted based only on planned tests.
+8. Before WinGet distribution, test installation, CLI discovery, app/CLI
+   interaction, dependency handling, upgrade with persisted configuration, and
+   uninstallation on a representative clean Windows x64 system. Exercise
+   upgrade while the app is running and unattended installation and upgrade.

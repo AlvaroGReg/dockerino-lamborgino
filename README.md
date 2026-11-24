@@ -4,6 +4,10 @@
 
 # Dockerino Lamborgino
 
+The project is licensed under the [Blue Oak Model License 1.0.0](LICENSE.md).
+Third-party components are subject to their own licenses; see the
+[third-party notices and outstanding review](THIRD-PARTY-NOTICES.md).
+
 Dockerino Lamborgino is a Windows desktop launcher for local development
 projects. Register a project, define named launch actions, and run their
 configured commands in interactive terminals hosted by the application. It
@@ -108,6 +112,28 @@ Both commands target x64; publish separately with the appropriate runtime
 identifier for other Windows architectures. PowerShell 7 and Git remain
 external requirements for their respective features in both variants.
 
+## Planned Windows installation
+
+The intended distribution is a Windows x64 installer containing both the app
+and CLI with .NET included. PowerShell 7 and Git will remain external
+dependencies. An initial Inno Setup installer can be built locally; it has not
+yet completed installation and upgrade verification, and no WinGet package has
+been published. Windows ARM64 packaging is deferred. See
+[quality and delivery](specs/quality-and-delivery.md) and the
+[development plan](plan.md) for requirements and remaining work.
+
+To build the installer from source with the .NET 10 SDK and Inno Setup 7:
+
+```powershell
+.\scripts\build-installer.ps1 -Version 0.1.0
+```
+
+The script creates a new `artifacts\release\0.1.0` directory and refuses to
+overwrite an existing output directory. Pass `-Compiler <path-to-ISCC.exe>`
+when the compiler is not on `PATH` or in the default per-user location.
+The installer is not signed. Direct installation does not automatically
+install Git or PowerShell 7.
+
 ## Register and configure a project in the UI
 
 Choose **Add project** and select one directory, or select a saved project and
@@ -141,6 +167,10 @@ starts the application when the current Windows user signs in. It does not
 select a project or run any configured actions or processes.
 
 ## Configure projects with the CLI
+
+Run the CLI with `--help` to display its command syntax. From a source checkout,
+use `dotnet run --project .\src\DockerinoLamborgino.Cli -- --help`.
+Use `--version` to display the CLI assembly version.
 
 The CLI and application use the shared project configuration service. Projects
 are stored individually under

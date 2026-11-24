@@ -100,6 +100,12 @@ agent's resulting configuration must still be explicitly reviewed/saved.
 - **CFG-033 — App refresh (Implemented).** After CLI configuration changes,
   users can request `projects refresh [project-id]`. The CLI may start the app
   with only the floating launcher visible if the app is not running.
+- **CFG-034 — CLI help (Implemented).** `--help` as the sole argument prints the
+  supported command syntax to standard output and exits with code `0`, without
+  starting the app or changing project data. Invalid syntax remains an error.
+- **CFG-035 — CLI version (Implemented).** `--version` as the sole argument prints
+  the CLI assembly version to standard output and exits with code `0`, without
+  starting the app or changing project data.
 
 ## 4. Acceptance scenarios
 

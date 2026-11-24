@@ -40,7 +40,9 @@ feedback.
 4. Verify and, where needed, implement launch preflight for missing selected
    action directories, commands, shell, terminal components, and required tools.
    See `RUN-007`.
-5. Review the full terminal dependency/license graph before distribution.
+5. Complete the third-party dependency/license graph and notices before
+   distribution. The partial review and unresolved provenance and notice
+   questions are recorded in `THIRD-PARTY-NOTICES.md`.
 6. Run the release checklist in
    [quality and delivery](specs/quality-and-delivery.md) and record environment,
    outcomes, and any unresolved gaps here.
@@ -64,6 +66,38 @@ feedback.
     See `RUN-018`.
  10. Run the corrected terminal UI smoke test on an interactive desktop before
      relying on its configured-command failure and lifecycle coverage.
+ 11. Implement the planned Windows x64 installer and WinGet distribution
+     (`REL-025`–`REL-027`): package the app and CLI with .NET, expose the CLI,
+     declare and verify PowerShell 7 and Git dependencies, and support safe
+     upgrades. Implement the Inno Setup per-user installer and GitHub Actions
+     artifact build, publish versioned GitHub releases, and initially submit
+     WinGet manifest updates manually. Check acceptance of the selected package
+     ID; test dependency detection for absent, existing and portable installs,
+     executable availability, interactive and unattended running-app upgrade
+     handling, and Windows trust warnings without signing. Verify installation,
+     upgrades, uninstall and persistence before release. WinGet dependency
+     support has been researched, but end-to-end behavior has not been tested.
+     `scripts/publish-windows.ps1` prepares separate versioned self-contained
+     app and CLI outputs. An initial Inno Setup installer and build script
+     compile, but installation, upgrades, uninstall, PATH handling, and
+     running-app protection have not yet been verified. WinGet packaging and
+     release automation are not yet implemented. On 2026-11-24, both publish commands succeeded
+     for a test version, the published CLI printed usage, and the solution
+     tests passed (66 Core, 1 Terminal). The app publish emitted IL3000 for
+     `WindowsStartupSetting.cs` and needs review and single-file verification.
+     The user subsequently reported a successful fresh installation and
+     provided screenshots showing the installed app, existing projects,
+     `dockerino --help` in an app terminal and an external PowerShell, and a
+     successful `dockerino dashboard open` response. The screenshots do not
+     establish a clean Windows environment or verification of the remaining
+     installation, dependency, upgrade and uninstall cases.
+     The user also reported successful uninstall and reinstall; the exact
+     persistence and PATH checks performed were not specified.
+     The user reported that without PowerShell 7 an installed app's terminal
+     fails to start; a screenshot shows the generic message "Terminal failed:
+     Could not create the terminal process." Missing-shell detection and an
+     actionable error remain open under `RUN-007`. This does not verify WinGet
+     dependency installation.
 
 ## Change workflow
 

@@ -137,6 +137,39 @@ local trust boundary, not authentication of an individual terminal. See
 [RUN-019](specs/launches-and-sessions.md#reset-request-and-outcome-contract-open)
 for the contract and implementation status.
 
+## D15. Windows installer and WinGet distribution
+
+**Decision:** distribute the app and CLI together in a Windows x64 installer
+with .NET included. Treat PowerShell 7 and Git as external dependencies and
+use WinGet for installation and upgrades. Defer Windows ARM64 packaging.
+
+**Why:** one installer makes the desktop application and global CLI available
+together without requiring users to install .NET separately. WinGet provides a
+Windows-oriented distribution and update path. The existing source publish
+variants in D12 remain useful independently of the planned installer.
+
+**Initial implementation choices:** use Inno Setup with a per-user installation;
+publish versioned installers as GitHub releases in the project repository. Use
+GitHub Actions to build and produce release artifacts; initially submit WinGet
+manifest updates manually. Use the package identifier
+`AlvaroGReg.DockerinoLamborgino`, subject to acceptance. Do not use a code-signing
+certificate. If the app is running during an interactive upgrade, ask the user
+to close it; a non-interactive upgrade must fail safely instead of closing it.
+An in-app updater that could restart the app is a possible future enhancement,
+not part of the current delivery.
+
+**Dependency research:** the WinGet manifest schema supports dependencies by
+package ID from the same source; `Microsoft.PowerShell` and `Git.Git` are the
+intended IDs. This does not establish that every existing or portable
+installation will be recognized, or that either executable is on the app's
+PATH. Test actual detection, versions, scope and command availability before
+release. The installer used directly does not automatically get WinGet's
+dependency processing. See the [WinGet manifest schema](https://github.com/microsoft/winget-pkgs/blob/master/doc/manifest/schema/1.28.0/installer.md)
+and [install documentation](https://learn.microsoft.com/en-us/windows/package-manager/winget/install).
+See
+[quality and delivery](specs/quality-and-delivery.md) for requirements and
+[the plan](plan.md) for outstanding work.
+
 ## Historical numbering
 
 The decision identifiers are retained for continuity with earlier planning
