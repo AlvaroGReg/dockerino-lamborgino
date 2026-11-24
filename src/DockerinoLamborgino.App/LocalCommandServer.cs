@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace DockerinoLamborgino.App;
 
@@ -67,7 +68,12 @@ public sealed class LocalCommandServer : IAsyncDisposable
                 {
                     response = new(false, null, ex.Message);
                 }
-                await writer.WriteLineAsync(JsonSerializer.Serialize(response, Json).AsMemory(), cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await writer.WriteLineAsync(JsonSerializer.Serialize(response, Json).AsMemory(), cancellationToken).ConfigureAwait(false);
+                    await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally { response.AfterResponse?.Invoke(); }
             }
             catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException) { }
         }
@@ -85,6 +91,10 @@ public sealed record LocalCommandRequest(string Operation, Guid? ProjectId = nul
     Guid? Id = null, long Offset = 0);
 
 /// <summary>For session.output, Data must contain text, nextOffset and completed.</summary>
-public sealed record LocalCommandResponse(bool Success, object? Data = null, string? Error = null);
+public sealed record LocalCommandResponse(bool Success, object? Data = null, string? Error = null)
+{
+    [JsonIgnore]
+    public Action? AfterResponse { get; init; }
+}
 
 public sealed record LocalSessionOutput(string Text, long NextOffset, bool Completed);

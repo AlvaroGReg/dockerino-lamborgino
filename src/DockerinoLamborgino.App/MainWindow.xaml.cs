@@ -157,7 +157,7 @@ public partial class MainWindow : Window
     private void UpdateStatusIndicators()
     {
         bool HasError(IEnumerable<SessionItem> items) =>
-            items.Any(item => item.State == TerminalSessionState.Failed);
+            items.Any(item => item.State == TerminalSessionState.Failed || item.LaunchError is not null);
         bool IsLoading(IEnumerable<SessionItem> items) =>
             items.Any(item => item.State == TerminalSessionState.Starting);
 
@@ -166,7 +166,9 @@ public partial class MainWindow : Window
             var container = SessionsList.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.ListBoxItem;
             if (container is null || FindVisualChild(container, "SessionStatusIndicator") is not { } indicator)
                 continue;
-            SetIndicator(indicator, item.State == TerminalSessionState.Failed, item.State == TerminalSessionState.Starting);
+            SetIndicator(indicator,
+                item.State == TerminalSessionState.Failed || item.LaunchError is not null,
+                item.State == TerminalSessionState.Starting);
         }
 
         foreach (var project in projects)
@@ -527,5 +529,6 @@ public partial class MainWindow : Window
         public string Status { get; set; } = "Starting";
         public Guid? ProjectId { get; set; }
         public TerminalSessionState? State { get; set; }
+        public string? LaunchError { get; set; }
     }
 }

@@ -13,6 +13,8 @@ internal static class Program
     {
         var app = new System.Windows.Application();
         var terminal = new TerminalSessionView();
+        var interactions = 0;
+        terminal.UserInteracted += () => interactions++;
         var button = new System.Windows.Controls.Button { Content = "Other focus target", Height = 32 };
         var nextButton = new System.Windows.Controls.Button { Content = "Next focus target", Height = 32 };
         var panel = new DockPanel();
@@ -38,13 +40,16 @@ internal static class Program
                 mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
                 mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
                 await WaitUntil(() => GetFocus() == host.Handle, "terminal keyboard focus");
+                await WaitUntil(() => interactions > 0, "terminal mouse interaction");
                 if (GetForegroundWindow() != new WindowInteropHelper(window).Handle)
                     throw new Exception("Test window is not foreground; keyboard input cannot be tested safely.");
 
                 // Tab completes Set-Cont to Set-Content. The file proves that
                 // the shell received Tab and accepted the remaining keystrokes.
+                var beforeTyping = interactions;
                 TypeText("Set-Cont");
                 await Task.Delay(300);
+                if (interactions <= beforeTyping) throw new Exception("Terminal keyboard interaction was not reported.");
                 PressKey(0x09);
                 await Task.Delay(300);
                 if (GetFocus() != host.Handle) throw new Exception("Tab moved focus away from the terminal.");
@@ -62,9 +67,11 @@ internal static class Program
                 button.Focus();
                 await Task.Delay(100);
                 if (!button.IsKeyboardFocused) throw new Exception("Could not focus the non-terminal button.");
+                var beforeOtherControl = interactions;
                 PressKey(0x09);
                 await Task.Delay(200);
                 if (!nextButton.IsKeyboardFocused) throw new Exception("Tab did not navigate to the next non-terminal button.");
+                if (interactions != beforeOtherControl) throw new Exception("Input outside the terminal was reported as terminal interaction.");
                 Console.WriteLine("PASS: PowerShell received Tab; Tab and Shift+Tab retained terminal focus; Tab navigated outside the terminal.");
                 result = 0;
             }

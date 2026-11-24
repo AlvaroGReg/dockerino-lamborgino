@@ -29,6 +29,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     private readonly StringBuilder _output = new();
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<bool> _startup = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private GuardedFactory? _factory;
     private TermPTY? _term;
     private Task? _run;
@@ -51,9 +52,11 @@ public sealed class TerminalSessionView : UserControl, IDisposable
 
     public event Action<string>? StatusChanged;
     public event Action<TerminalSessionState>? StateChanged;
+    public event Action? UserInteracted;
     public string Status { get; private set; } = "Ready";
     public TerminalSessionState? State { get; private set; }
     public int? ExitCode { get; private set; }
+    public Task<bool> Startup => _startup.Task;
     /// <summary>All terminal output received so far, including terminal control sequences.</summary>
     public string Output { get { lock (_outputLock) return _output.ToString(); } }
 
@@ -61,7 +64,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     /// Configures a single PowerShell session before Start. Results are reported on
     /// the dispatcher; execution stops after the first nonzero result.
     /// </summary>
-    public void ConfigureCommands(IEnumerable<string> commands, string workingDirectory)
+    public void ConfigureCommands(IEnumerable<string> commands, string workingDirectory, Guid? sessionId = null, string? pipeName = null)
     {
         Dispatcher.VerifyAccess();
         if (_started || _isStopped || _sequence is not null)
@@ -71,7 +74,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
         var steps = commands.ToArray();
         if (steps.Length == 0 || steps.Any(string.IsNullOrWhiteSpace))
             throw new ArgumentException("At least one nonempty command is required.", nameof(commands));
-        var sequence = new TerminalCommandSequence(steps);
+        var sequence = new TerminalCommandSequence(steps, sessionId, pipeName);
         _sequence = sequence;
         _terminal.WorkingDirectory = workingDirectory;
         _terminal.StartupCommandLine = sequence.CommandLine;
@@ -226,6 +229,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     {
         if (_isStopped) return;
         _isStopped = true;
+        _startup.TrySetResult(false);
         _stopped.TrySetResult();
         _sequence?.Stop();
         _timer?.Stop();
@@ -272,15 +276,21 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     {
         const int keyDown = 0x0100;
         const int keyUp = 0x0101;
+        const int systemKeyDown = 0x0104;
         const int tab = 0x09;
-        if (handled || (message.message != keyDown && message.message != keyUp) ||
-            message.wParam != (IntPtr)tab)
-            return;
-
+        if (handled) return;
         _terminalHost ??= FindTerminalHost(_terminal);
         var handle = _terminalHost?.Handle ?? IntPtr.Zero;
-        if (handle == IntPtr.Zero || GetFocus() != handle || message.hwnd != handle)
-            return;
+        if (handle == IntPtr.Zero || (message.hwnd != handle && !IsChild(handle, message.hwnd))) return;
+
+        // Native terminal input bypasses WPF mouse and keyboard routed events.
+        // Do not treat motion, output, focus changes or clicks on a tab as input.
+        if (message.message is keyDown or systemKeyDown or
+            0x0201 or 0x0204 or 0x0207 or 0x020B)
+            UserInteracted?.Invoke();
+
+        if ((message.message != keyDown && message.message != keyUp) ||
+            message.wParam != (IntPtr)tab || GetFocus() != handle || message.hwnd != handle) return;
 
         // WPF otherwise translates Tab into focus traversal before the native
         // terminal receives it. Deliver the original key message, including
@@ -305,12 +315,16 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     private static extern IntPtr GetFocus();
 
     [DllImport("user32.dll")]
+    private static extern bool IsChild(IntPtr parent, IntPtr child);
+
+    [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam);
 
     private void OnWindowClosed(object? sender, EventArgs e) => Stop();
 
     private void SetState(TerminalSessionState state, string status)
     {
+        if (state == TerminalSessionState.Running) _startup.TrySetResult(true);
         if (State == state && Status == status) return;
         State = state;
         Status = status;

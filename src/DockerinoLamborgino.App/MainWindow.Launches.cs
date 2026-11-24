@@ -49,10 +49,26 @@ public partial class MainWindow
                 if (registry.List().Any(s => s.Id == stopId)) result = registry.Stop(stopId);
                 else
                 {
+                    var owner = launchOrchestrator.List().FirstOrDefault(l =>
+                        l.Processes.Any(p => p.SessionId == stopId) ||
+                        l.Resets.Any(r => r.OriginalSessionId == stopId && r.State == "pending"));
                     await launchOrchestrator.StopSessionAsync(stopId);
-                    result = FindManagedSession(stopId);
+                    result = owner is null ? FindManagedSession(stopId) :
+                        launchOrchestrator.Get(owner.Id).Processes.FirstOrDefault(p => p.SessionId == stopId)
+                        ?? (object)launchOrchestrator.Get(owner.Id);
                 }
                 break;
+            case "session.reset":
+                var resetId = Required(request.Id);
+                var reservation = launchOrchestrator.ReserveReset(resetId);
+                return new LocalCommandResponse(true, reservation.Acceptance)
+                {
+                    AfterResponse = () =>
+                    {
+                        reservation.Start();
+                        _ = ObserveResetAsync(resetId, reservation.Completion);
+                    }
+                };
             case "session.output":
                 var id = Required(request.Id);
                 var manual = registry.List().FirstOrDefault(s => s.Id == id);
@@ -82,6 +98,26 @@ public partial class MainWindow
         return new(true, result);
     }
 
+    private async Task ObserveResetAsync(Guid resetId, Task<ManagedProcessInfo> completion)
+    {
+        string? error = null;
+        try { await completion.ConfigureAwait(false); }
+        catch (Exception ex) { error = ex.Message; }
+        await Dispatcher.InvokeAsync(() =>
+        {
+            if (error is not null) StatusText.Text = $"Reset failed: {error}";
+            if (managedViews.TryGetValue(resetId, out var oldView) && oldView.State == TerminalSessionState.Stopped)
+            {
+                var oldItem = sessions.FirstOrDefault(s => s.Id == resetId);
+                managedViews.Remove(resetId);
+                if (oldItem is not null) sessions.Remove(oldItem);
+                TerminalHost.Children.Remove(oldView);
+                RefreshStatusIndicators();
+                UpdateTerminalPanel();
+            }
+        });
+    }
+
     private ManagedProcessInfo FindManagedSession(Guid id) =>
         launchOrchestrator.List().SelectMany(l => l.Processes).FirstOrDefault(p => p.SessionId == id)
         ?? throw new KeyNotFoundException($"Unknown session ID: {id}");
@@ -98,6 +134,24 @@ public partial class MainWindow
                 var item = new SessionItem(request.SessionId, request.ProcessName, view);
                 item.ProjectId = request.ProjectId;
                 item.State = view.State;
+                view.CommandCompleted += (_, code) =>
+                {
+                    if (code == 0) return;
+                    item.LaunchError = $"Configured command failed (exit code {code}).";
+                    item.Status = item.LaunchError;
+                    window.RefreshStatusIndicators();
+                    if (window.SessionsList.SelectedItem == item)
+                        window.StatusText.Text = item.LaunchError;
+                };
+                view.UserInteracted += () =>
+                {
+                    if (item.LaunchError is null) return;
+                    item.LaunchError = null;
+                    item.Status = view.Status;
+                    window.RefreshStatusIndicators();
+                    if (window.SessionsList.SelectedItem == item)
+                        window.StatusText.Text = item.Status;
+                };
                 window.sessions.Add(item);
                 view.StateChanged += state =>
                 {
@@ -113,19 +167,25 @@ public partial class MainWindow
                 window.SessionsList.SelectedItem = item;
                 window.UpdateStatusIndicators();
                 window.ShowTerminalPanel();
-                return new WindowLaunchSession(view, request.WorkingDirectory);
+                return new WindowLaunchSession(view, request.WorkingDirectory, request.SessionId);
             }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken);
     }
 
-    private sealed class WindowLaunchSession(TerminalSessionView view, string directory) : ILaunchSession
+    private sealed class WindowLaunchSession(TerminalSessionView view, string directory, Guid sessionId) : ILaunchSession
     {
+        public async Task WaitUntilReadyAsync(CancellationToken cancellationToken)
+        {
+            if (!await view.Startup.WaitAsync(cancellationToken))
+                throw new InvalidOperationException($"Terminal could not start: {view.Status}");
+        }
+
         public async Task<IReadOnlyList<LaunchCommandResult>> RunSequenceAsync(IReadOnlyList<string> commands,
             Action<LaunchCommandResult> commandCompleted, CancellationToken cancellationToken)
         {
             Task<IReadOnlyList<int>> task = await view.Dispatcher.InvokeAsync(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                view.ConfigureCommands(commands, directory);
+                view.ConfigureCommands(commands, directory, sessionId, LocalCommandServer.PipeName);
                 view.CommandCompleted += (index, code) => commandCompleted(new(index, code));
                 view.Start();
                 return view.CommandResults!;

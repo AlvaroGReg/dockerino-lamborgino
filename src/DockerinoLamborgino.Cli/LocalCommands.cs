@@ -16,8 +16,16 @@ internal static class LocalCommands
 
     public static int Run(string[] args, TextWriter output, TextWriter error)
     {
+        var resetId = Guid.Empty;
+        if (args is ["reset"] && !Id(Environment.GetEnvironmentVariable("DOCKERINO_SESSION_ID"), out resetId))
+        {
+            error.WriteLine("Cannot reset: DOCKERINO_SESSION_ID is missing or invalid. Run reset from a managed session.");
+            return 1;
+        }
+
         Request? request = args switch
         {
+            ["reset"] => new("session.reset", Id: resetId),
             ["launch", "start", var p, var a] when Id(p, out var project) && Id(a, out var action)
                 => new("launch.start", ProjectId: project, ActionId: action),
             ["launch", "list"] => new("launch.list"),
@@ -26,6 +34,7 @@ internal static class LocalCommands
             ["session", "list"] => new("session.list"),
             ["session", "inspect", var value] when Id(value, out var id) => new("session.inspect", Id: id),
             ["session", "stop", var value] when Id(value, out var id) => new("session.stop", Id: id),
+            ["session", "reset", var value] when Id(value, out var id) => new("session.reset", Id: id),
             ["session", "output" or "follow", var value] when Id(value, out var id)
                 => new("session.output", Id: id),
             ["session", "output" or "follow", var value, "--offset", var offset]
@@ -39,7 +48,7 @@ internal static class LocalCommands
         };
         if (request is null)
         {
-            error.WriteLine("Usage: projects refresh [project-id] | launch start <project-id> <action-id> | launch list | launch inspect|stop <launch-id> | session list | session inspect|stop <session-id> | session output|follow <session-id> [--offset <offset>] | dashboard open");
+            error.WriteLine("Usage: projects refresh [project-id] | launch start <project-id> <action-id> | launch list | launch inspect|stop <launch-id> | session list | session inspect|stop|reset <session-id> | session output|follow <session-id> [--offset <offset>] | reset | dashboard open");
             return 2;
         }
 
@@ -82,11 +91,11 @@ internal static class LocalCommands
         }
     }
 
-    private static bool Id(string value, out Guid id) => Guid.TryParse(value, out id) && id != Guid.Empty;
+    private static bool Id(string? value, out Guid id) => Guid.TryParse(value, out id) && id != Guid.Empty;
 
     private static Response Send(Request request)
     {
-        using var pipe = Connect();
+        using var pipe = Connect(request.Operation != "session.reset");
         using var reader = new StreamReader(pipe, Encoding.UTF8, false, 4096, leaveOpen: true);
         using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true };
         writer.WriteLine(JsonSerializer.Serialize(request, Json));
@@ -94,11 +103,12 @@ internal static class LocalCommands
         return JsonSerializer.Deserialize<Response>(line, Json) ?? throw new IOException("Invalid application response.");
     }
 
-    private static NamedPipeClientStream Connect()
+    private static NamedPipeClientStream Connect(bool allowStart)
     {
         var pipe = NewPipe();
         try { pipe.Connect(250); return pipe; }
         catch (TimeoutException) { pipe.Dispose(); }
+        if (!allowStart) throw new IOException("The owning application is not running or its pipe is unavailable.");
 
         // Serialize startup among CLI processes. Recheck after acquiring the lock.
         using var mutex = new Mutex(false, @"Local\DockerinoLamborgino.Phase5.Startup");

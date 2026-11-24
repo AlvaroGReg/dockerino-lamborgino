@@ -200,6 +200,12 @@ Select a project in the dashboard and click one of its configured launch
 actions. Each configured process uses a separate PowerShell 7 terminal. Session
 tabs can be selected or closed; closing a tab stops that session, and `+` opens
 a new terminal.
+For configured launches, a nonzero command exit marks the associated terminal,
+project, and floating launcher as having an error; standalone terminals are not
+included in command-result monitoring. Clicking or pressing a key directly in
+the affected terminal clears its configured-command error indicator without
+changing the recorded result. Later interactive commands are not monitored for
+failures; another session's error or an actual terminal failure remains visible.
 
 The CLI communicates with the running application over a current-user named
 pipe. If needed, it starts the application with the dashboard hidden. Set
@@ -217,7 +223,29 @@ dotnet @cli session inspect <session-id>
 dotnet @cli session output <session-id>
 dotnet @cli session follow <session-id>
 dotnet @cli session stop <session-id>
+dotnet @cli session reset <session-id>
 ```
+
+In a terminal created by a configured launch, `dockerino reset` replaces that
+terminal and replays the original process's complete command sequence in its
+original working directory. Other terminals are unaffected. The replacement
+has a new session ID and does not retain the previous shell state or output;
+commands and their side effects run again. Detached Docker containers are not
+stopped. The explicit session-ID form works outside the terminal. Both forms
+return acceptance rather than the final outcome; use `launch inspect` to see
+pending, succeeded, or failed reset outcomes. A self-reset can terminate its own
+CLI process before the response is displayed. Reset requires a running app and
+does not start it. See
+[RUN-019](specs/launches-and-sessions.md#reset-request-and-outcome-contract-open).
+
+The terminal forwards `dockerino` commands to the CLI executable. Place
+`DockerinoLamborgino.Cli.exe` and its accompanying build or publish files beside
+the application, add the CLI to `PATH`, or set `DOCKERINO_CLI_PATH` to its
+absolute executable path before starting the application. For example, after a
+Debug build from source, the executable is under
+`src\DockerinoLamborgino.Cli\bin\Debug\net10.0`. The shorthand `reset` requires
+the session context supplied to configured terminals; it is not supported in an
+independent **New terminal**. The explicit form does not require that context.
 
 Launches and sessions, including terminal output, are held in memory for the
 application lifetime. Exiting the application stops its managed sessions.

@@ -23,6 +23,7 @@ public interface ILaunchSession
 {
     Task<IReadOnlyList<LaunchCommandResult>> RunSequenceAsync(IReadOnlyList<string> commands,
         Action<LaunchCommandResult> commandCompleted, CancellationToken cancellationToken);
+    Task WaitUntilReadyAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     Task StopAsync();
 }
 
@@ -35,8 +36,20 @@ public enum ManagedStepState { Pending, Running, Succeeded, Failed, Skipped, Sto
 public sealed record ManagedStepInfo(Guid StepId, string Command, ManagedStepState State, int? ExitCode, string? Error);
 public sealed record ManagedProcessInfo(Guid ProcessId, Guid SessionId, string Name, string WorkingDirectory,
     ManagedProcessState State, string? Error, IReadOnlyList<ManagedStepInfo> Steps);
+public sealed record ResetOutcome(Guid OriginalSessionId, string State, Guid? ReplacementSessionId = null, string? Error = null);
+public sealed record ResetAcceptance(Guid LaunchId, Guid OriginalSessionId);
 public sealed record ManagedLaunchInfo(Guid Id, Guid ProjectId, Guid ActionId, ManagedLaunchState State,
-    IReadOnlyList<ManagedProcessInfo> Processes);
+    IReadOnlyList<ManagedProcessInfo> Processes, IReadOnlyList<ResetOutcome> Resets);
+
+public sealed class ResetReservation
+{
+    private readonly Action start;
+    internal ResetReservation(ResetAcceptance acceptance, Task<ManagedProcessInfo> completion, Action start)
+    { Acceptance = acceptance; Completion = completion; this.start = start; }
+    public ResetAcceptance Acceptance { get; }
+    public Task<ManagedProcessInfo> Completion { get; }
+    public void Start() => start();
+}
 
 /// <summary>
 /// In-memory launch owner. Start snapshots the selected action and returns identifiers
@@ -70,6 +83,7 @@ public sealed class LaunchOrchestrator(ILaunchSessionFactory factory)
         public SemaphoreSlim StartGate = new(1, 1);
         public string? ProtocolError;
         public Task? StopTask;
+        public TaskCompletionSource<bool> Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ManagedProcessInfo Snapshot() => new(Id, SessionId, Name, Directory, State, Error,
             Steps.Select(s => s.Snapshot()).ToArray());
     }
@@ -80,6 +94,8 @@ public sealed class LaunchOrchestrator(ILaunchSessionFactory factory)
         public Guid ProjectId = projectId;
         public Guid ActionId = actionId;
         public List<Process> Processes = processes;
+        public long StopGeneration;
+        public Dictionary<Guid, ResetOutcome> Resets = [];
         public ManagedLaunchInfo Snapshot()
         {
             var state = Processes.Any(p => p.State is ManagedProcessState.Pending or ManagedProcessState.Running or ManagedProcessState.Stopping)
@@ -87,12 +103,23 @@ public sealed class LaunchOrchestrator(ILaunchSessionFactory factory)
                 : Processes.Any(p => p.State == ManagedProcessState.Failed) ? ManagedLaunchState.Failed
                 : Processes.Any(p => p.State == ManagedProcessState.Stopped) ? ManagedLaunchState.Stopped
                 : ManagedLaunchState.Succeeded;
-            return new(Id, ProjectId, ActionId, state, Processes.Select(p => p.Snapshot()).ToArray());
+            return new(Id, ProjectId, ActionId, state, Processes.Select(p => p.Snapshot()).ToArray(), Resets.Values.ToArray());
         }
     }
 
     private readonly object gate = new();
     private readonly Dictionary<Guid, Launch> launches = [];
+    private sealed class ResetOperation(Launch launch, Process original, long generation)
+    {
+        public Launch Launch = launch;
+        public Process Original = original;
+        public long Generation = generation;
+        public Process? Replacement;
+        public bool Cancelled;
+        public bool Started;
+        public TaskCompletionSource<ManagedProcessInfo> Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+    private readonly Dictionary<Guid, ResetOperation> resets = [];
     private readonly ILaunchSessionFactory factory = factory ?? throw new ArgumentNullException(nameof(factory));
 
     public ManagedLaunchInfo Start(ProjectConfiguration project, Guid actionId)
@@ -146,15 +173,125 @@ public sealed class LaunchOrchestrator(ILaunchSessionFactory factory)
     {
         lock (gate)
         {
-            var process = launches.Values.SelectMany(l => l.Processes).SingleOrDefault(p => p.SessionId == sessionId)
+            var operation = resets.Values.FirstOrDefault(r => r.Original.SessionId == sessionId || r.Replacement?.SessionId == sessionId);
+            if (operation is not null) operation.Cancelled = true;
+            var process = operation?.Replacement ?? launches.Values.SelectMany(l => l.Processes).SingleOrDefault(p => p.SessionId == sessionId)
                 ?? throw new KeyNotFoundException($"Unknown session ID: {sessionId}");
             return StopLocked(process);
         }
     }
 
+    /// <summary>
+    /// Stops and replaces one configured session, replaying its original launch snapshot.
+    /// Requests for the same session share the result. Startup or stop failures throw;
+    /// the affected process remains available through launch inspection.
+    /// </summary>
+    public Task<ManagedProcessInfo> ResetSessionAsync(Guid sessionId)
+    {
+        var reservation = ReserveReset(sessionId);
+        reservation.Start();
+        return reservation.Completion;
+    }
+
+    public ResetReservation ReserveReset(Guid sessionId)
+    {
+        lock (gate)
+        {
+            if (resets.TryGetValue(sessionId, out var existing))
+                return Reservation(existing);
+            // A replacement is not eligible for another reset until its own
+            // startup outcome is known. Otherwise overlapping operations can
+            // compete to replace or stop the same process.
+            if (resets.Values.Any(r => r.Replacement?.SessionId == sessionId))
+                throw new InvalidOperationException("The replacement session is still starting.");
+            var launch = launches.Values.SingleOrDefault(l => l.Processes.Any(p => p.SessionId == sessionId))
+                ?? throw new KeyNotFoundException($"Unknown session ID: {sessionId}");
+            var process = launch.Processes.Single(p => p.SessionId == sessionId);
+            if (process.State is ManagedProcessState.Stopping or ManagedProcessState.Stopped)
+                throw new InvalidOperationException("The session is stopping or stopped.");
+            var operation = new ResetOperation(launch, process, launch.StopGeneration);
+            resets.Add(sessionId, operation);
+            launch.Resets[sessionId] = new(sessionId, "pending");
+            return Reservation(operation);
+        }
+    }
+
+    private ResetReservation Reservation(ResetOperation operation) =>
+        new(new(operation.Launch.Id, operation.Original.SessionId), operation.Completion.Task, () =>
+        {
+            lock (gate)
+            {
+                if (operation.Started) return;
+                operation.Started = true;
+                _ = Task.Run(() => CompleteResetAsync(operation));
+            }
+        });
+
+    private async Task CompleteResetAsync(ResetOperation operation)
+    {
+        try
+        {
+            var replacement = await ResetAsync(operation);
+            lock (gate)
+            {
+                if (operation.Cancelled) throw new InvalidOperationException("Reset cancelled by an explicit stop.");
+                operation.Launch.Resets[operation.Original.SessionId] = new(operation.Original.SessionId, "succeeded", replacement.SessionId);
+                resets.Remove(operation.Original.SessionId);
+            }
+            operation.Completion.TrySetResult(replacement);
+        }
+        catch (Exception ex)
+        {
+            lock (gate)
+            {
+                operation.Launch.Resets[operation.Original.SessionId] = new(operation.Original.SessionId, "failed", Error: ex.Message);
+                resets.Remove(operation.Original.SessionId);
+            }
+            operation.Completion.TrySetException(ex);
+        }
+    }
+
+    private async Task<ManagedProcessInfo> ResetAsync(ResetOperation operation)
+    {
+        var launch = operation.Launch;
+        var original = operation.Original;
+        Task stop;
+        lock (gate)
+        {
+            if (operation.Cancelled) throw new InvalidOperationException("Reset cancelled by an explicit stop.");
+            stop = StopLocked(original);
+        }
+        await stop;
+        Process replacement;
+        lock (gate)
+        {
+            if (operation.Cancelled || launch.StopGeneration != operation.Generation)
+                throw new InvalidOperationException("The launch was stopped while the session reset was pending.");
+            if (original.State != ManagedProcessState.Stopped)
+                throw new InvalidOperationException($"Could not stop session {original.SessionId}: {original.Error}");
+            replacement = new Process(original.Id, original.Name, original.Directory,
+                original.Steps.Select(s => new Step(s.Id, s.Command)).ToList());
+            operation.Replacement = replacement;
+            launch.Processes[launch.Processes.IndexOf(original)] = replacement;
+        }
+        _ = Task.Run(() => RunAsync(launch, replacement));
+        if (!await replacement.Started.Task)
+        {
+            lock (gate)
+                throw new InvalidOperationException($"Could not start replacement session {replacement.SessionId}: {replacement.Error}");
+        }
+        lock (gate) return replacement.Snapshot();
+    }
+
     public Task StopLaunchAsync(Guid launchId)
     {
-        lock (gate) return Task.WhenAll(FindLaunch(launchId).Processes.Select(StopLocked));
+        lock (gate)
+        {
+            var launch = FindLaunch(launchId);
+            launch.StopGeneration++;
+            foreach (var reset in resets.Values.Where(r => r.Launch == launch)) reset.Cancelled = true;
+            return Task.WhenAll(launch.Processes.Select(StopLocked));
+        }
     }
 
     private Launch FindLaunch(Guid id) => launches.TryGetValue(id, out var launch)
@@ -224,14 +361,26 @@ public sealed class LaunchOrchestrator(ILaunchSessionFactory factory)
             {
                 lock (gate)
                 {
-                    if (process.State == ManagedProcessState.Stopping) return;
+                    if (process.State == ManagedProcessState.Stopping)
+                    {
+                        process.Started.TrySetResult(false);
+                        return;
+                    }
                     process.State = ManagedProcessState.Running;
                     process.Steps[0].State = ManagedStepState.Running;
                 }
                 sequence = session.RunSequenceAsync(process.Steps.Select(s => s.Command).ToArray(),
                     result => ReportCompletion(process, result), process.Cancellation.Token);
+                if (sequence is null) throw new InvalidOperationException("Session returned no sequence task.");
             }
             finally { process.StartGate.Release(); }
+            var ready = session.WaitUntilReadyAsync(process.Cancellation.Token);
+            if (await Task.WhenAny(sequence, ready) == sequence &&
+                (sequence.IsFaulted || sequence.IsCanceled))
+                await sequence;
+            await ready;
+            lock (gate)
+                process.Started.TrySetResult(process.State == ManagedProcessState.Running);
             var results = await sequence;
             lock (gate)
             {
@@ -264,6 +413,7 @@ public sealed class LaunchOrchestrator(ILaunchSessionFactory factory)
                 if (process.State == ManagedProcessState.Stopping && process.Session is null) process.State = ManagedProcessState.Stopped;
                 else if (!stopping) { process.State = ManagedProcessState.Failed; process.Error = ex.Message; }
                 SkipPending(process);
+                process.Started.TrySetResult(false);
             }
         }
     }

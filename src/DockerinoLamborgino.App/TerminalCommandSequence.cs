@@ -14,7 +14,7 @@ internal sealed class TerminalCommandSequence
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly int _count;
 
-    public TerminalCommandSequence(string[] commands)
+    public TerminalCommandSequence(string[] commands, Guid? sessionId = null, string? pipeName = null)
     {
         _count = commands.Length;
         var name = "dockerino-" + Guid.NewGuid().ToString("N");
@@ -23,7 +23,27 @@ internal sealed class TerminalCommandSequence
 
         // Base64 keeps arbitrary command text out of the wrapper's syntax.
         var encoded = commands.Select(c => "'" + Convert.ToBase64String(Encoding.UTF8.GetBytes(c)) + "'");
+        var resetFunction = sessionId is Guid id && pipeName is not null
+            ? $$"""
+                $env:DOCKERINO_SESSION_ID = '{{id}}'
+                $env:DOCKERINO_PIPE_NAME = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{{Convert.ToBase64String(Encoding.UTF8.GetBytes(pipeName))}}'))
+                function global:dockerino {
+                    $cli = $env:DOCKERINO_CLI_PATH
+                    if (-not $cli) {
+                        $besideApp = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{{Convert.ToBase64String(Encoding.UTF8.GetBytes(Path.Combine(AppContext.BaseDirectory, "DockerinoLamborgino.Cli.exe")))}}'))
+                        if (Test-Path -LiteralPath $besideApp -PathType Leaf) { $cli = $besideApp }
+                    }
+                    if (-not $cli) {
+                        $command = Get-Command dockerino, DockerinoLamborgino.Cli -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($command) { $cli = $command.Source }
+                    }
+                    if (-not $cli) { Write-Error 'Dockerino CLI not found. Set DOCKERINO_CLI_PATH or add it to PATH.'; return }
+                    & $cli @args
+                }
+                """
+            : "";
         var script = $$"""
+            {{resetFunction}}
             $dlPipe = [System.IO.Pipes.NamedPipeClientStream]::new('.', '{{name}}', [System.IO.Pipes.PipeDirection]::Out)
             $dlPipe.Connect(15000)
             $dlWriter = [System.IO.StreamWriter]::new($dlPipe)

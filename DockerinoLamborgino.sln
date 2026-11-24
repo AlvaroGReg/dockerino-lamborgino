@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockerinoLamborgino.Termina
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockerinoLamborgino.Cli", "src\DockerinoLamborgino.Cli\DockerinoLamborgino.Cli.csproj", "{065BD40E-D6B8-4A15-AA3F-1CFBC7AD776A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DockerinoLamborgino.App.SequenceChecks", "tests\DockerinoLamborgino.App.SequenceChecks\DockerinoLamborgino.App.SequenceChecks.csproj", "{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,18 @@ Global
 		{065BD40E-D6B8-4A15-AA3F-1CFBC7AD776A}.Release|x64.Build.0 = Release|Any CPU
 		{065BD40E-D6B8-4A15-AA3F-1CFBC7AD776A}.Release|x86.ActiveCfg = Release|Any CPU
 		{065BD40E-D6B8-4A15-AA3F-1CFBC7AD776A}.Release|x86.Build.0 = Release|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Debug|x64.Build.0 = Debug|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Debug|x86.Build.0 = Debug|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Release|x64.ActiveCfg = Release|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Release|x64.Build.0 = Release|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Release|x86.ActiveCfg = Release|Any CPU
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -112,5 +126,6 @@ Global
 		{AA78E3F0-6D16-4BC1-BFE6-DDF1761BC3CF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{6DC7F53D-B584-407A-AFE2-21EB0D2CA5F1} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{065BD40E-D6B8-4A15-AA3F-1CFBC7AD776A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{C3136AB3-D78F-4F2D-865F-8FAA8C0B0E1B} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

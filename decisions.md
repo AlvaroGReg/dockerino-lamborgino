@@ -124,6 +124,19 @@ action.
 project. An early draft located this option in the project-list footer; the
 implemented location is the dashboard header.
 
+## D14. Asynchronous scoped terminal reset
+
+**Decision:** accept reset requests asynchronously, with a terminal-context
+shorthand and an explicit managed-session-ID CLI form. Report the eventual
+outcome through launch inspection rather than the initiating CLI response.
+
+**Why:** self-reset closes the invoking terminal and its CLI process; external
+callers still need confirmation that the request was accepted. Acceptance
+cannot imply the replacement started successfully. The current-user pipe is a
+local trust boundary, not authentication of an individual terminal. See
+[RUN-019](specs/launches-and-sessions.md#reset-request-and-outcome-contract-open)
+for the contract and implementation status.
+
 ## Historical numbering
 
 The decision identifiers are retained for continuity with earlier planning

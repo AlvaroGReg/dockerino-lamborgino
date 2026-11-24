@@ -65,13 +65,13 @@ function Select-Item($element) {
     throw 'No selectable list item was found.'
 }
 function Get-SessionList { Find-ById $main 'SessionsList' }
-function Get-SessionItems {
+function Get-SessionCount {
     $list = Get-SessionList
-    if (-not $list) { return @() }
+    if (-not $list) { return 0 }
     $condition = [System.Windows.Automation.PropertyCondition]::new(
         [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
         [System.Windows.Automation.ControlType]::ListItem)
-    @($list.FindAll([System.Windows.Automation.TreeScope]::Children, $condition))
+    $list.FindAll([System.Windows.Automation.TreeScope]::Children, $condition).Count
 }
 function Find-SessionItem([string]$label) {
     $list = Get-SessionList
@@ -92,12 +92,27 @@ try {
 
     # Use an isolated project store so this smoke test never reads or edits user projects.
     $projectId = [guid]::NewGuid()
+    $actionId = [guid]::NewGuid()
+    $processId = [guid]::NewGuid()
+    $stepId = [guid]::NewGuid()
     $configuration = @{
         id = $projectId
         name = 'Terminal session smoke'
         directory = $fixture
         repositories = @()
-        actions = @()
+        actions = @(@{
+            id = $actionId
+            name = 'Configured failure'
+            color = '#2378D2'
+            description = 'Smoke test for configured command failure status'
+            isQuickLaunch = $false
+            processes = @(@{
+                id = $processId
+                name = 'Configured failure'
+                workingDirectory = $fixture
+                steps = @(@{ id = $stepId; command = "throw 'configured failure'" })
+            })
+        })
     } | ConvertTo-Json -Depth 10
     [System.IO.File]::WriteAllText(
         (Join-Path $store "$projectId.json"), $configuration, [System.Text.UTF8Encoding]::new($false))
@@ -123,7 +138,7 @@ try {
         $label = Find-ByName $second 'Terminal 2'
         if ($label -and $label.Current.HelpText -eq 'Terminal running.') { $label }
     } 'second terminal startup completion' 30 | Out-Null
-    if ((Get-SessionItems).Count -ne 2) { throw 'Expected exactly two terminal tabs.' }
+    if ((Get-SessionCount) -ne 2) { throw 'Expected exactly two terminal tabs.' }
     if (-not (Find-AppWindow 'Terminal status: normal')) {
         throw 'The floating launcher did not expose the normal terminal summary.'
     }
@@ -131,11 +146,29 @@ try {
         throw 'Unassociated New terminal sessions changed the selected project status.'
     }
 
+    # A configured launch command failure marks its managed session/project red,
+    # while the interactive PowerShell process remains alive.
+    Invoke-Element (Wait-For { Find-ByName (Find-ById $main 'LaunchActionsList') 'Configured failure' } 'configured launch action')
+    $failedLaunchTab = Wait-For { Find-SessionItem 'Configured failure' } 'configured launch terminal'
+    Wait-For { (Get-SessionCount) -eq 3 } 'three terminal tabs' | Out-Null
+    Wait-For {
+        Find-ByName $failedLaunchTab 'Terminal status: Error'
+    } 'configured command error indicator' | Out-Null
+    Wait-For {
+        Find-ByName $projectText 'Terminal status: Error'
+    } 'project command error indicator' | Out-Null
+    Wait-For {
+        Find-AppWindow 'Terminal status: error'
+    } 'floating launcher command error indicator' | Out-Null
+    if (Find-ByName $second 'Terminal status: Error') {
+        throw 'A New terminal session inherited a configured launch command error.'
+    }
+
     # Select and close one real tab; the other session must remain running.
     Select-Item $first
     Select-Item $second
     Invoke-Element (Find-ByName $first 'Close terminal tab')
-    Wait-For { (Get-SessionItems).Count -eq 1 } 'first tab to close' | Out-Null
+    Wait-For { (Get-SessionCount) -eq 2 } 'first tab to close' | Out-Null
     $remaining = Wait-For { Find-SessionItem 'Terminal 2' } 'unrelated terminal to remain'
     $remainingLabel = Find-ByName $remaining 'Terminal 2'
     if (-not $remainingLabel -or $remainingLabel.Current.HelpText -ne 'Terminal running.') {
@@ -144,11 +177,13 @@ try {
     if ($app.HasExited) { throw 'Closing a terminal tab exited the application.' }
 
     Invoke-Element (Find-ByName $remaining 'Close terminal tab')
-    Wait-For { (Get-SessionItems).Count -eq 0 } 'second tab to close' | Out-Null
+    Wait-For { (Get-SessionCount) -eq 1 } 'second tab to close' | Out-Null
+    Invoke-Element (Find-ByName $failedLaunchTab 'Close terminal tab')
+    Wait-For { (Get-SessionCount) -eq 0 } 'configured failure tab to close' | Out-Null
     if ($app.HasExited) { throw 'Closing the last terminal tab exited the application.' }
 
-    'PASS: isolated project selection, two running New terminal sessions, floating status summary, per-tab close, unrelated-session survival, and dashboard lifetime.'
-    'Running is the app-reported terminal state; this test does not assert pixel colors, prompt interaction, or OS-level process containment.'
+    'PASS: isolated project selection, New terminal isolation, configured command failure indicators, floating status summary, per-tab close, unrelated-session survival, and dashboard lifetime.'
+    'Status is asserted through UI Automation names; this test does not assert pixel colors, prompt interaction, or OS-level process containment.'
 }
 finally {
     if ($app) {

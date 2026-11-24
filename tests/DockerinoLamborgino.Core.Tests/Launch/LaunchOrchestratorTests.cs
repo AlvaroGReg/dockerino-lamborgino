@@ -10,6 +10,8 @@ public sealed class LaunchOrchestratorTests
     {
         public ConcurrentQueue<string> Commands = new();
         public Func<string, CancellationToken, Task<int>> Run = (_, _) => Task.FromResult(0);
+        public Func<Task> Stop = () => Task.CompletedTask;
+        public Func<CancellationToken, Task> Ready = _ => Task.CompletedTask;
         public int Stops;
         public async Task<IReadOnlyList<LaunchCommandResult>> RunSequenceAsync(IReadOnlyList<string> commands,
             Action<LaunchCommandResult> commandCompleted, CancellationToken cancellationToken)
@@ -25,7 +27,8 @@ public sealed class LaunchOrchestratorTests
             }
             return results;
         }
-        public Task StopAsync() { Interlocked.Increment(ref Stops); return Task.CompletedTask; }
+        public Task StopAsync() { Interlocked.Increment(ref Stops); return Stop(); }
+        public Task WaitUntilReadyAsync(CancellationToken cancellationToken) => Ready(cancellationToken);
     }
 
     private sealed class Factory : ILaunchSessionFactory
@@ -59,6 +62,50 @@ public sealed class LaunchOrchestratorTests
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (!predicate()) await Task.Delay(10, timeout.Token);
+    }
+
+    [Fact]
+    public async Task AsynchronousSequenceFailureBeforeReadinessIsReported()
+    {
+        var (project, action) = Config(["one"]);
+        var preparation = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var session = new FakeSession
+        {
+            Run = (_, _) => preparation.Task,
+            Ready = token => Task.Delay(Timeout.Infinite, token)
+        };
+        var factory = new Factory();
+        factory.Sessions[action.Processes[0].Id] = session;
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => session.Commands.Count == 1);
+        preparation.SetException(new InvalidOperationException("preparation failed"));
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Failed);
+        Assert.Contains("preparation failed", orchestrator.Get(launch.Id).Processes[0].Error);
+    }
+
+    [Fact]
+    public async Task ResetReportsAsynchronousSequenceFailureBeforeReadiness()
+    {
+        var (project, action) = Config(["one"]);
+        var preparation = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var replacement = new FakeSession
+        {
+            Run = (_, _) => preparation.Task,
+            Ready = token => Task.Delay(Timeout.Infinite, token)
+        };
+        var count = 0;
+        var factory = new Factory { Create = (_, _) => Task.FromResult<ILaunchSession>(
+            Interlocked.Increment(ref count) == 1 ? new FakeSession() : replacement) };
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var reset = orchestrator.ResetSessionAsync(launch.Processes[0].SessionId);
+        await WaitUntil(() => replacement.Commands.Count == 1);
+        preparation.SetException(new InvalidOperationException("preparation failed"));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => reset.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Contains("preparation failed", error.Message);
     }
 
     [Fact]
@@ -154,5 +201,231 @@ public sealed class LaunchOrchestratorTests
         var invalid = orchestrator.Start(project, action.Id);
         await WaitUntil(() => orchestrator.Get(invalid.Id).State == ManagedLaunchState.Failed);
         Assert.NotNull(orchestrator.Get(invalid.Id).Processes[0].Error);
+    }
+
+    [Fact]
+    public async Task ResetReplaysSnapshotAndLeavesOtherProcessAlone()
+    {
+        var (project, action) = Config(["one", "two"], ["other"]);
+        var sessions = new ConcurrentDictionary<Guid, FakeSession>();
+        var requests = new ConcurrentQueue<LaunchSessionRequest>();
+        var factory = new Factory { Create = (request, _) =>
+        {
+            requests.Enqueue(request);
+            var session = new FakeSession();
+            sessions[request.SessionId] = session;
+            return Task.FromResult<ILaunchSession>(session);
+        } };
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var original = launch.Processes[0];
+        action.Processes[0].WorkingDirectory = "changed";
+        action.Processes[0].Steps[0].Command = "changed";
+
+        var replacement = await orchestrator.ResetSessionAsync(original.SessionId);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var current = orchestrator.Get(launch.Id);
+        Assert.NotEqual(original.SessionId, replacement.SessionId);
+        Assert.Equal(original.ProcessId, replacement.ProcessId);
+        Assert.Equal("directory", replacement.WorkingDirectory);
+        Assert.Equal(new[] { "one", "two" }, sessions[replacement.SessionId].Commands);
+        Assert.Equal(original.Steps.Select(s => s.StepId), replacement.Steps.Select(s => s.StepId));
+        Assert.Equal(launch.Processes[1].SessionId, current.Processes[1].SessionId);
+        Assert.Equal(0, sessions[current.Processes[1].SessionId].Stops);
+        Assert.Equal(1, sessions[original.SessionId].Stops);
+        Assert.Equal(3, requests.Count);
+    }
+
+    [Fact]
+    public async Task ConcurrentResetsShareOneReplacement()
+    {
+        var (project, action) = Config(["one"]);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var session = new FakeSession { Stop = () => release.Task };
+        int creates = 0;
+        var factory = new Factory { Create = (_, _) =>
+            Task.FromResult<ILaunchSession>(Interlocked.Increment(ref creates) == 1 ? session : new FakeSession()) };
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var first = orchestrator.ResetSessionAsync(launch.Processes[0].SessionId);
+        var second = orchestrator.ResetSessionAsync(launch.Processes[0].SessionId);
+        await WaitUntil(() => session.Stops == 1);
+        release.SetResult();
+        var results = await Task.WhenAll(first, second);
+        Assert.Equal(results[0].SessionId, results[1].SessionId);
+        Assert.Equal(2, creates);
+    }
+
+    [Fact]
+    public async Task ReservationDoesNotStopUntilStartedAndOutcomesAreInspectable()
+    {
+        var (project, action) = Config(["one"]);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = new FakeSession { Stop = () => release.Task };
+        int creates = 0;
+        var orchestrator = new LaunchOrchestrator(new Factory { Create = (_, _) =>
+            Task.FromResult<ILaunchSession>(Interlocked.Increment(ref creates) == 1 ? first : new FakeSession()) });
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var id = launch.Processes[0].SessionId;
+        var reservation = orchestrator.ReserveReset(id);
+        var duplicate = orchestrator.ReserveReset(id);
+        Assert.Equal(launch.Id, reservation.Acceptance.LaunchId);
+        Assert.Equal(id, reservation.Acceptance.OriginalSessionId);
+        Assert.Same(reservation.Completion, duplicate.Completion);
+        Assert.Equal(0, first.Stops);
+        Assert.Equal("pending", Assert.Single(orchestrator.Get(launch.Id).Resets).State);
+        reservation.Start();
+        duplicate.Start();
+        await WaitUntil(() => first.Stops == 1);
+        Assert.False(reservation.Completion.IsCompleted);
+        release.SetResult();
+        var replacement = await reservation.Completion.WaitAsync(TimeSpan.FromSeconds(5));
+        var outcome = Assert.Single(orchestrator.Get(launch.Id).Resets);
+        Assert.Equal("succeeded", outcome.State);
+        Assert.Equal(replacement.SessionId, outcome.ReplacementSessionId);
+        Assert.Throws<KeyNotFoundException>(() => orchestrator.ReserveReset(id));
+    }
+
+    [Fact]
+    public async Task ExplicitSessionStopCancelsReservedReset()
+    {
+        var (project, action) = Config(["one"]);
+        var orchestrator = new LaunchOrchestrator(new Factory());
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var id = launch.Processes[0].SessionId;
+        var reservation = orchestrator.ReserveReset(id);
+        await orchestrator.StopSessionAsync(id);
+        reservation.Start();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => reservation.Completion);
+        var outcome = Assert.Single(orchestrator.Get(launch.Id).Resets);
+        Assert.Equal("failed", outcome.State);
+        Assert.Contains("cancel", outcome.Error!, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(id, orchestrator.Get(launch.Id).Processes[0].SessionId);
+    }
+
+    [Fact]
+    public async Task ResetStopFailurePreservesOriginalAndCanBeRetried()
+    {
+        var (project, action) = Config(["one"]);
+        var session = new FakeSession { Stop = () => Task.FromException(new InvalidOperationException("stop failed")) };
+        int creates = 0;
+        var factory = new Factory { Create = (_, _) =>
+            Task.FromResult<ILaunchSession>(Interlocked.Increment(ref creates) == 1 ? session : new FakeSession()) };
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => orchestrator.ResetSessionAsync(launch.Processes[0].SessionId));
+        var failed = orchestrator.Get(launch.Id).Processes[0];
+        Assert.Equal(launch.Processes[0].SessionId, failed.SessionId);
+        Assert.Equal(ManagedProcessState.Failed, failed.State);
+        Assert.Contains("stop failed", failed.Error);
+        var outcome = Assert.Single(orchestrator.Get(launch.Id).Resets);
+        Assert.Equal("failed", outcome.State);
+        Assert.Contains("stop failed", outcome.Error);
+        Assert.Equal(1, creates);
+        session.Stop = () => Task.CompletedTask;
+        var replacement = await orchestrator.ResetSessionAsync(failed.SessionId);
+        Assert.NotEqual(failed.SessionId, replacement.SessionId);
+    }
+
+    [Fact]
+    public async Task ResetStartFailureIsInspectable()
+    {
+        var (project, action) = Config(["one"]);
+        int creates = 0;
+        var factory = new Factory { Create = (_, _) =>
+            Interlocked.Increment(ref creates) == 1
+                ? Task.FromResult<ILaunchSession>(new FakeSession())
+                : Task.FromException<ILaunchSession>(new InvalidOperationException("start failed")) };
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => orchestrator.ResetSessionAsync(launch.Processes[0].SessionId));
+        var failed = orchestrator.Get(launch.Id).Processes[0];
+        Assert.NotEqual(launch.Processes[0].SessionId, failed.SessionId);
+        Assert.Equal(ManagedProcessState.Failed, failed.State);
+        Assert.Contains("start failed", failed.Error);
+        var outcome = Assert.Single(orchestrator.Get(launch.Id).Resets);
+        Assert.Equal("failed", outcome.State);
+        Assert.Contains("start failed", outcome.Error);
+    }
+
+    [Fact]
+    public async Task StopLaunchWhileResetIsStoppingPreventsReplacement()
+    {
+        var (project, action) = Config(["one"]);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var session = new FakeSession { Stop = () => release.Task };
+        int creates = 0;
+        var factory = new Factory { Create = (_, _) =>
+        {
+            Interlocked.Increment(ref creates);
+            return Task.FromResult<ILaunchSession>(session);
+        } };
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var reset = orchestrator.ResetSessionAsync(launch.Processes[0].SessionId);
+        await WaitUntil(() => session.Stops == 1);
+        var stop = orchestrator.StopLaunchAsync(launch.Id);
+        release.SetResult();
+        await stop;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => reset);
+        Assert.Equal(1, creates);
+        Assert.Equal(launch.Processes[0].SessionId, orchestrator.Get(launch.Id).Processes[0].SessionId);
+        Assert.Equal(ManagedLaunchState.Stopped, orchestrator.Get(launch.Id).State);
+    }
+
+    [Fact]
+    public async Task ResetWaitsForReadinessAndStopDoesNotDeadlock()
+    {
+        var (project, action) = Config(["one"]);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var replacement = new FakeSession
+        {
+            Ready = async token => { entered.SetResult(); await Task.Delay(Timeout.Infinite, token); }
+        };
+        int creates = 0;
+        var factory = new Factory { Create = (_, _) => Task.FromResult<ILaunchSession>(
+            Interlocked.Increment(ref creates) == 1 ? new FakeSession() : replacement) };
+        var orchestrator = new LaunchOrchestrator(factory);
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var reset = orchestrator.ResetSessionAsync(launch.Processes[0].SessionId);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(reset.IsCompleted);
+        await orchestrator.StopLaunchAsync(launch.Id).WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => reset);
+        Assert.Equal(1, replacement.Stops);
+        Assert.Equal(ManagedLaunchState.Stopped, orchestrator.Get(launch.Id).State);
+    }
+
+    [Fact]
+    public async Task ReplacementCannotBeResetWhileItsStartupIsPending()
+    {
+        var (project, action) = Config(["one"]);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var replacement = new FakeSession
+        {
+            Ready = async token => { entered.SetResult(); await ready.Task.WaitAsync(token); }
+        };
+        var creates = 0;
+        var orchestrator = new LaunchOrchestrator(new Factory { Create = (_, _) =>
+            Task.FromResult<ILaunchSession>(Interlocked.Increment(ref creates) == 1 ? new FakeSession() : replacement) });
+        var launch = orchestrator.Start(project, action.Id);
+        await WaitUntil(() => orchestrator.Get(launch.Id).State == ManagedLaunchState.Succeeded);
+        var reset = orchestrator.ResetSessionAsync(launch.Processes[0].SessionId);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var replacementId = orchestrator.Get(launch.Id).Processes[0].SessionId;
+        Assert.Throws<InvalidOperationException>(() => orchestrator.ReserveReset(replacementId));
+        Assert.Equal(2, creates);
+        await orchestrator.StopSessionAsync(launch.Processes[0].SessionId).WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => reset.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(ManagedProcessState.Stopped, orchestrator.Get(launch.Id).Processes[0].State);
     }
 }

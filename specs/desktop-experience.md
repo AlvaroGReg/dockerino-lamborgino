@@ -51,15 +51,18 @@ visual/manual acceptance evidence is still outstanding.
   and configured descriptions. Names and descriptions must convey meaning;
   colors have no fixed semantic meaning.
 - **UI-015 — Project status summary (Implemented).** A project row shows the most
-  severe current terminal status among sessions launched by that project:
+  severe current terminal status or unacknowledged configured-command failure
+  among sessions launched by that project:
   error takes precedence over loading. Sessions opened with **New terminal**
   have no project association and are excluded. Clear the project indicator
-  when none of its sessions is loading or failed. Loading is amber and error
+  when none of its sessions is loading, failed, or has an unacknowledged
+  configured-command failure. Loading is amber and error
   is red; the indicator has an accessible tooltip.
 - **UI-016 — Floating launcher status summary (Implemented).** The floating launcher
-  shows the most severe current terminal status across all sessions: error
-  takes precedence over loading. Clear the indicator when no session is
-  loading or failed. Loading is amber and error is red; the launcher exposes
+  shows the most severe current terminal status or unacknowledged configured-command
+  failure across all sessions: error takes precedence over loading. Clear the
+  indicator when no session is loading, failed, or has an unacknowledged
+  configured-command failure. Loading is amber and error is red; the launcher exposes
   the state through its tooltip and accessible name.
 
 ## 3. Application options and CLI activation
@@ -97,7 +100,8 @@ visual/manual acceptance evidence is still outstanding.
     sessions, while the floating launcher summarizes all sessions, including
     unassociated terminals. Verify error takes precedence over loading and
     indicators clear when the corresponding sessions are no longer loading or
-    failed.
+    failed and have no unacknowledged configured-command failure. Verify that
+    acknowledging one command failure does not hide another error.
 
 ## 5. Verification references and gaps
 

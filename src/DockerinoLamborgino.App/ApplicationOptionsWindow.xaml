@@ -18,7 +18,7 @@
                            FontWeight="SemiBold" Margin="0,0,0,14"/>
                 <CheckBox x:Name="StartWithWindowsCheckBox" Content="Start Dockerino Lamborgino with Windows"
                           AutomationProperties.Name="Start application with Windows"/>
-                <TextBlock Text="Starts the application when you sign in. It does not launch any configured project actions or processes."
+                <TextBlock Text="Starts the application when you sign in."
                            Foreground="#89A6A3" TextWrapping="Wrap" Margin="0,8,0,0"/>
             </StackPanel>
         </DockPanel>
