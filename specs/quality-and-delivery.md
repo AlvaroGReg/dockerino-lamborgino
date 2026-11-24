@@ -1,0 +1,98 @@
+# Quality, safety, and delivery specification
+
+## 1. Platform and architecture
+
+- **REL-001 — Target platform (Implemented).** Windows desktop application
+  built with WPF on .NET 10; CLI is a .NET 10 command-line application.
+- **REL-002 — Shared domain behavior (Implemented).** Core provides shared
+  configuration, launch, session, and Git behavior to the UI and CLI where
+  both expose the operation.
+- **REL-003 — Terminal integration boundary (Implemented).** Integrated
+  terminal uses EasyWindowsTerminalControl/ConPTY behind a project-owned
+  adapter. Keep concrete package types behind that boundary, pin dependencies,
+  and review compatibility, maintenance, and license obligations before
+  distribution.
+- **REL-004 — Process ownership (Implemented).** Windows Job Objects scope
+  process cleanup to app-managed sessions. Never terminate arbitrary processes.
+
+## 2. Security and side-effect boundaries
+
+- **REL-010 — Explicit authorization.** Project registration, saving, launching,
+  Git operations, and process stopping must each be initiated through the
+  applicable explicit user/CLI action. Configured commands may have arbitrary
+  effects; the app runs only the selected saved commands and must make known
+  effects visible.
+- **REL-011 — No implicit repository mutations.** Git fetch/pull and branch
+  changes occur only on explicit request and follow
+  [the Git spec](git-repositories.md).
+- **REL-012 — Managed process controls.** Stop operations accept managed
+  session/launch identifiers only. No arbitrary PID controls.
+- **REL-013 — Docker daemon boundary.** A terminal Job Object does not own
+  detached containers. Do not claim that stopping the client stopped
+  containers; container management must be a separate explicit, project-scoped
+  feature before it is added.
+- **REL-014 — Credentials.** Do not persist Git credentials in the app. Git
+  hooks and user-configured credential helpers are outside the app's sandbox.
+
+## 3. Runtime requirements and packaging
+
+- **REL-020 — Build requirement.** Building from source requires the .NET 10 SDK.
+- **REL-021 — External runtime tools.** PowerShell 7 (`pwsh.exe`) is the
+  default shell and Git is required for Git features. The self-contained app
+  bundles .NET, not these external tools.
+- **REL-022 — Publish variants.** Offer single-file Windows x64 self-contained
+  and framework-dependent builds. Self-contained bundles the .NET 10 runtime;
+  framework-dependent requires the .NET 10 Windows Desktop Runtime and is
+  smaller. Other architectures require their own runtime identifier.
+- **REL-023 — Native extraction.** Native libraries may be extracted to a
+  temporary directory at startup. Publish variants use separate output
+  directories.
+- **REL-024 — In-memory runtime state.** Active launches, sessions, and output
+  are not persisted across app restarts. Project configuration and dashboard
+  ordering are persisted.
+
+## 4. Verification policy
+
+- **REL-030 — Requirement traceability.** Tests and manual checks should refer
+  to the requirement IDs in these specs. The corresponding test suites and
+  known gaps are listed in each feature spec and `tests/README.md`.
+- **REL-031 — Separate evidence from intent.** A test existing is not proof that
+  it passed in a given environment. Record user acceptance and manual test
+  results only when evidence exists; otherwise leave the item open.
+- **REL-032 — Cross-interface consistency.** For operations available through
+  both UI and CLI, verify equivalent validation, behavior, and errors.
+- **REL-033 — Real terminal integration.** Verify keyboard input, output,
+  resizing, and process containment with real interactive Windows shells, in
+  addition to unit tests.
+
+## 5. Out of scope
+
+- Cross-platform support.
+- Repository creation, cloning, deletion, push, commit, stash, general-purpose
+  branch creation, or automatic conflict resolution.
+- Automatic project/repository discovery or configuration inference.
+- Per-project Node/.NET version selection, environment/secrets management, or
+  implicit dependency installation.
+- External terminals as the primary managed experience.
+- Managing Docker Desktop or detached Docker containers as a side effect of
+  stopping an application terminal.
+- The application directly changing project scripts/configuration except
+  through commands explicitly configured and launched by the user.
+
+## 6. Release acceptance checklist
+
+1. Build Debug and Release and run `dotnet test DockerinoLamborgino.sln`.
+2. Run the standalone command-sequence, UI smoke, and terminal-tab integration
+   checks described in `tests/README.md` on a suitable interactive Windows
+   desktop.
+3. Exercise paths with spaces, invalid paths, incomplete projects, storage
+   conflicts, and terminal creation/resize/input failures.
+4. Verify Git branch and network-operation cases in
+   [the Git spec](git-repositories.md), including partial batch failure and
+   authentication outcomes.
+5. Verify process containment, session/launch stop scoping, and app shutdown in
+   [the launch spec](launches-and-sessions.md).
+6. Review the full dependency/license graph and verify both documented publish
+   variants.
+7. Record which checks ran, the environment, results, and remaining gaps in
+   `plan.md`; do not mark a requirement accepted based only on planned tests.

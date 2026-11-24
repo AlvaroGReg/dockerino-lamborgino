@@ -274,5 +274,7 @@ Microsoft.Windows.Console.ConPTY. Its hosted HWND has WPF airspace limitations,
 and the upstream control relies on beta APIs. Review the full dependency and
 license graph before distribution.
 
-See [the development plan](plan.md) for implementation status and
-[architecture decisions](decisions.md) for technical rationale.
+See the [product specifications](specs/README.md) for normative requirements
+and acceptance scenarios, [the development plan](plan.md) for implementation
+status, and [decision context](decisions.md) for technical rationale and
+alternatives.
