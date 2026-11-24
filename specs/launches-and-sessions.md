@@ -30,7 +30,10 @@ and UI acceptance evidence remains environment-dependent; see
 - **RUN-007 — Launch preflight (Open).** Before starting, validate the selected
   action's working directories, commands, shell, terminal components, and
   required tools without assuming every project needs the same tools. Identify
-  missing prerequisites clearly; do not install them implicitly.
+  missing prerequisites clearly; do not install them implicitly. Selected
+  process directories are checked at launch, and a missing `pwsh.exe` produces
+  an actionable diagnostic when process creation reports it unavailable. Other
+  prerequisite checks and real missing-shell UI verification remain open.
 
 ## 2. Terminal and session behavior
 
@@ -46,9 +49,12 @@ and UI acceptance evidence remains environment-dependent; see
 - **RUN-013 — Scoped stop (Implemented; integration safety remains a release
   concern).** Stopping a session targets only the process tree owned by that
   session. A launch can be stopped as a managed group of its sessions.
-- **RUN-014 — Session visibility (Implemented).** Sessions remain selectable
+- **RUN-014 — Session visibility (Implemented; desktop smoke verified).** Sessions remain selectable
   and their output inspectable after exit/failure/stop. Closing a session tab
   stops that session; adding a terminal creates a new managed session.
+  Closing a tab removes its presentation, not the retained session's CLI
+  inspection/output contract. Output history is retained separately from visible
+  tabs; see V110-03 in the [1.1.0 plan](../plan.md#version-110-consolidation).
 - **RUN-015 — In-memory lifetime (Implemented).** Launches, sessions, and
   terminal output are held in memory for the app lifetime. Exiting the app
   stops managed sessions; they do not survive restart.
@@ -74,8 +80,8 @@ and UI acceptance evidence remains environment-dependent; see
   not. Actual terminal failure remains visible, and other sessions' errors
   continue to contribute to project and launcher indicators. Interactive
   commands are not monitored for subsequent failures.
-- **RUN-019 — Reset a configured terminal (Partially implemented; asynchronous
-  CLI contract and concurrency handling open).** A user can request
+- **RUN-019 — Reset a configured terminal (Implemented; integrated concurrency
+  and delivery verification open).** A user can request
   `dockerino reset` from a terminal created by a configured launch to close
   that terminal and start a new terminal for that configured process. Run the
   complete original sequence again, in order and with the same working
@@ -117,7 +123,16 @@ The replacement has a new session ID and takes the original process's place in
 launch inspection. An unassociated **New terminal** does not supply the session
 context required by the shorthand and cannot itself be reset.
 
-#### Reset request and outcome contract (Open)
+<a id="reset-request-and-outcome-contract-open"></a>
+
+#### Reset request and outcome contract
+
+Reservation, asynchronous acceptance, replay, and inspection outcomes are
+implemented. This contract is not fully release-verified: deterministic
+acceptance-before-completion, failed response delivery, and integrated
+stop/tab-close races remain open. Existing test runs and qualified user
+reports are recorded in [plan.md](../plan.md); they do not establish acceptance
+of every case below. The legacy anchor above is retained for existing links.
 
 - `dockerino reset` uses `DOCKERINO_SESSION_ID` and the configured pipe for the
   current terminal. `dockerino session reset <session-id>` explicitly targets a
@@ -164,7 +179,7 @@ context required by the shorthand and cannot itself be reset.
 - **RUN-021 — Start request (Implemented).** `launch start <project-id>
   <action-id>` returns asynchronously with managed launch/session identifiers;
   it does not wait for all processes to finish.
-- **RUN-022 — Inspection and control (Implemented).** CLI commands list,
+- **RUN-022 — Inspection and control (Implemented; closed-tab desktop smoke verified).** CLI commands list,
   inspect, and stop launches; list, inspect, stop, retrieve accumulated output
   from, and follow output for sessions. Launch inspection exposes step results.
 - **RUN-023 — App activation (Implemented).** CLI can open/activate the
@@ -254,6 +269,11 @@ projects refresh [project-id]
     alone does not acknowledge the error, the recorded launch result remains
     failed, and subsequent interactive failures are not monitored. Repeat with
     keyboard and mouse input.
+14. **RUN-014 / RUN-015 / RUN-022:** retrieve output and start a follower for
+    both an independent terminal and a configured session, then close their
+    tabs. Verify retained session inspection and output remain accessible,
+    consumed offsets remain valid, and followers receive final output and
+    completion without an artificial history reset.
 
 ## 6. Verification references and gaps
 

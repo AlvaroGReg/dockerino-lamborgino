@@ -8,7 +8,8 @@ product behavior. The implementation and its tests should conform to them.
 - Requirements use stable identifiers (`CFG-*`, `RUN-*`, `GIT-*`, `UI-*`, and
   `REL-*`) so changes and verification can refer to a specific expectation.
 - Where implementation status can be assessed, requirements are labeled
-  **Implemented**, **Partially verified**, **Planned**, or **Open**. These labels
+  **Implemented**, **Partially implemented**, **Partially verified**, **Planned**,
+  or **Open**. These labels
   describe the documented baseline, not a guarantee that every
   environment-specific acceptance check has passed. Cross-cutting policy and
   release obligations remain normative even where no single implementation
@@ -23,6 +24,10 @@ product behavior. The implementation and its tests should conform to them.
 - A requirement marked **Open** or **Planned** is not a claim about current
   behavior. Historical decisions and their rationale live in
   [decisions.md](../decisions.md); they do not override these specs.
+- The [1.1.0 consolidation plan](../plan.md#version-110-consolidation) records
+  the selected stabilization work, review evidence, and release gates. Known
+  implementation gaps are labeled here without weakening the required behavior
+  to match a defect; completing this documentation does not close those gaps.
 
 ## Specification index
 

@@ -87,6 +87,15 @@ agent's resulting configuration must still be explicitly reviewed/saved.
   unrelated valid projects from being used.
 - **CFG-024 — Display order separation (Implemented).** Dashboard ordering is
   persisted separately from project configuration and its revision.
+- **CFG-025 — Operation-scoped availability (Implemented; integrated verification open).** Keep
+  structurally valid saved projects visible with resource diagnostics when an
+  associated repository or a process working directory becomes unavailable.
+  Validate availability for the selected operation; an unavailable resource
+  used only by another action or by Git must not block a valid selected launch.
+  This does not remove configuration/save validation in `CFG-021` or permit
+  launching with missing required resources. Loading preserves availability
+  diagnostics and the selected launch rechecks its own process directories; see V110-01 in the
+  [consolidation plan](../plan.md#version-110-consolidation).
 
 ### CLI configuration interface
 
@@ -125,6 +134,10 @@ agent's resulting configuration must still be explicitly reviewed/saved.
    dashboard presentation.
 7. Verify project registration/configuration from UI and CLI has equivalent
    validation and persistence behavior.
+8. **CFG-025 / GIT-002 / RUN-007:** save a valid project, then make an external
+   repository or another action's working directory unavailable. Verify the
+   project remains visible with diagnostics and an unaffected action still
+   launches. Verify the affected operation fails with an actionable error.
 
 ## 5. Verification references and gaps
 

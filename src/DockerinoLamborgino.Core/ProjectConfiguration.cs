@@ -44,5 +44,9 @@ public sealed class LaunchStep
     public Guid? DependsOnSuccessOf { get; set; }
 }
 
-public sealed record ConfigurationIssue(string Path, string Message);
+public sealed record ConfigurationIssue(string Path, string Message)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsResourceAvailability { get; init; }
+}
 public sealed record ProjectLoadResult(string Source, ProjectConfiguration? Project, IReadOnlyList<ConfigurationIssue> Issues, string? Revision = null);

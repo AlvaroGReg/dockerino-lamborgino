@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Collections.Concurrent;
 using DockerinoLamborgino.Core;
 
 namespace DockerinoLamborgino.App;
@@ -8,17 +9,28 @@ public partial class MainWindow
     private readonly LaunchOrchestrator launchOrchestrator;
     private readonly LocalCommandServer commandServer;
     private readonly Dictionary<Guid, TerminalSessionView> managedViews = [];
+    private readonly ConcurrentDictionary<Guid, SessionOutputHistory> sessionOutput = new();
 
     private ManagedLaunchInfo StartLaunch(Guid projectId, Guid actionId)
     {
         var loaded = configurationService.Get(projectId);
-        if (loaded.Project is null || loaded.Issues.Count != 0)
-            throw new InvalidOperationException(string.Join(Environment.NewLine, loaded.Issues.Select(i => $"{i.Path}: {i.Message}")));
+        var issues = configurationService.ValidateLaunch(loaded, actionId);
+        if (loaded.Project is null || issues.Count != 0)
+            throw new InvalidOperationException(string.Join(Environment.NewLine, issues.Select(i => $"{i.Path}: {i.Message}")));
         return launchOrchestrator.Start(loaded.Project, actionId);
     }
 
-    private Task<LocalCommandResponse> DispatchCommandAsync(LocalCommandRequest request, CancellationToken token) =>
-        Dispatcher.InvokeAsync(() => HandleCommandAsync(request), System.Windows.Threading.DispatcherPriority.Normal, token).Task.Unwrap();
+    private Task<LocalCommandResponse> DispatchCommandAsync(LocalCommandRequest request, CancellationToken token)
+    {
+        if (request.Operation == "session.output" && request.Id is { } id &&
+            sessionOutput.TryGetValue(id, out var history))
+        {
+            var snapshot = history.Read(request.Offset);
+            return Task.FromResult(new LocalCommandResponse(true,
+                new LocalSessionOutput(snapshot.Text, snapshot.NextOffset, snapshot.Completed)));
+        }
+        return Dispatcher.InvokeAsync(() => HandleCommandAsync(request), System.Windows.Threading.DispatcherPriority.Normal, token).Task.Unwrap();
+    }
 
     private async Task<LocalCommandResponse> HandleCommandAsync(LocalCommandRequest request)
     {
@@ -73,12 +85,17 @@ public partial class MainWindow
                 var id = Required(request.Id);
                 var manual = registry.List().FirstOrDefault(s => s.Id == id);
                 var process = manual is null ? FindManagedSession(id) : null;
-                var view = manual is null ? managedViews.GetValueOrDefault(id) : sessions.First(s => s.Id == id).View;
-                var text = view?.Output ?? "";
-                if (request.Offset < 0 || request.Offset > text.Length) throw new ArgumentOutOfRangeException(nameof(request.Offset));
-                result = new LocalSessionOutput(text[(int)request.Offset..], text.Length,
-                    view?.State is TerminalSessionState.Exited or TerminalSessionState.Failed or TerminalSessionState.Stopped ||
-                    (view is null && process?.State is ManagedProcessState.Failed or ManagedProcessState.Stopped));
+                if (sessionOutput.TryGetValue(id, out var history))
+                {
+                    var snapshot = history.Read(request.Offset);
+                    result = new LocalSessionOutput(snapshot.Text, snapshot.NextOffset, snapshot.Completed);
+                }
+                else
+                {
+                    if (request.Offset != 0) throw new ArgumentOutOfRangeException(nameof(request.Offset));
+                    result = new LocalSessionOutput("", 0,
+                        process?.State is ManagedProcessState.Failed or ManagedProcessState.Stopped);
+                }
                 break;
             case "projects.refresh":
                 var preferredProjectId = request.ProjectId is { } projectId && projectId != Guid.Empty
@@ -129,6 +146,7 @@ public partial class MainWindow
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var view = new TerminalSessionView { Visibility = Visibility.Collapsed };
+                window.sessionOutput.TryAdd(request.SessionId, view.OutputHistory);
                 window.managedViews.Add(request.SessionId, view);
                 window.TerminalHost.Children.Add(view);
                 var item = new SessionItem(request.SessionId, request.ProcessName, view);

@@ -68,7 +68,8 @@ visual/manual acceptance evidence is still outstanding.
 ## 3. Application options and CLI activation
 
 - **UI-020 — Windows sign-in startup (Implemented).** Provide an
-  application-level option accessible from the dashboard header. When enabled,
+  application-level option accessible from the bottom of the dashboard's
+  project-list column. When enabled,
   start the application for the current Windows user's sign-in only. Do not
   select a project or launch actions/processes automatically.
 - **UI-021 — Setting scope (Implemented).** The startup option is independent

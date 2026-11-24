@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using DockerinoLamborgino.Core;
 using DockerinoLamborgino.Terminal;
 using EasyWindowsTerminalControl;
 using EasyWindowsTerminalControl.Internals;
@@ -26,7 +27,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     private readonly EasyTerminalControl _terminal = new();
     private readonly object _outputLock = new();
     private readonly StringBuilder _earlyOutput = new();
-    private readonly StringBuilder _output = new();
+    public SessionOutputHistory OutputHistory { get; } = new();
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<bool> _startup = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -57,9 +58,6 @@ public sealed class TerminalSessionView : UserControl, IDisposable
     public TerminalSessionState? State { get; private set; }
     public int? ExitCode { get; private set; }
     public Task<bool> Startup => _startup.Task;
-    /// <summary>All terminal output received so far, including terminal control sequences.</summary>
-    public string Output { get { lock (_outputLock) return _output.ToString(); } }
-
     /// <summary>
     /// Configures a single PowerShell session before Start. Results are reported on
     /// the dispatcher; execution stops after the first nonzero result.
@@ -100,14 +98,15 @@ public sealed class TerminalSessionView : UserControl, IDisposable
         try
         {
             _factory = new GuardedFactory();
-            _term = new TermPTY();
+            var drainingTerm = new DrainingTerminal();
+            _term = drainingTerm;
             var term = _term;
             var factory = _factory;
             term.InterceptOutputToUITerminal = (ref Span<char> output) =>
             {
                 lock (_outputLock)
                 {
-                    _output.Append(output);
+                    OutputHistory.Append(output);
                     if (!_connected)
                     {
                         _earlyOutput.Append(output);
@@ -119,7 +118,7 @@ public sealed class TerminalSessionView : UserControl, IDisposable
             var command = _terminal.StartupCommandLine;
             var directory = _terminal.WorkingDirectory;
             if (_sequence is not null) _ = ObserveCommandsAsync(_sequence);
-            var run = Task.Run(() => term.Start(command, logOutput: true, factory: factory, workingDirectory: directory));
+            var run = Task.Run(() => term.Start(command, logOutput: true, factory: drainingTerm.WrapFactory(factory), workingDirectory: directory));
             _run = run;
             // Observe errors even if Stop or the timeout wins the race.
             _ = run.ContinueWith(t =>
@@ -246,11 +245,14 @@ public sealed class TerminalSessionView : UserControl, IDisposable
         factory?.Dispose();
         _ = Task.Run(async () =>
         {
-            // TermPTY owns the process and pseudoconsole; closing streams helps
-            // its reader exit after initialization finishes or fails.
+            // Let the terminal drain before its own Start method disposes the pipes.
             if (run is not null) await Task.WhenAny(_ready.Task, run).ConfigureAwait(false);
             try { term?.CloseStdinToApp(); } catch (Exception) { }
-            try { term?.ConsoleOutStream?.Dispose(); } catch (Exception) { }
+            try { if (run is not null) await run.ConfigureAwait(false); } catch (Exception) { }
+            if (term is DrainingTerminal { ReaderError: { } error })
+                OutputHistory.Fail(error);
+            else
+                OutputHistory.Complete();
         });
         SetState(state, status);
     }

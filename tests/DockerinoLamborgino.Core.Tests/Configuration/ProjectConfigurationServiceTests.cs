@@ -201,6 +201,64 @@ public sealed class ProjectConfigurationServiceTests : IDisposable
     }
 
     [Fact]
+    public void UnavailableResourcesAreDiagnosedButOnlySelectedActionBlocksLaunch()
+    {
+        var repository = Path.Combine(root, "repository");
+        var otherDirectory = Path.Combine(root, "other action");
+        Directory.CreateDirectory(repository);
+        Directory.CreateDirectory(otherDirectory);
+        var project = ProjectConfigurationService.Create("Example", root);
+        project.Repositories.Add(repository);
+        LaunchAction Action(string name, string directory) => new()
+        {
+            Id = Guid.NewGuid(), Name = name, Color = "#123456",
+            Processes = [new LaunchProcess { Id = Guid.NewGuid(), Name = name, WorkingDirectory = directory,
+                Steps = [new LaunchStep { Id = Guid.NewGuid(), Command = "test" }] }]
+        };
+        var good = Action("good", root);
+        var affected = Action("affected", otherDirectory);
+        project.Actions.AddRange([good, affected]);
+        Assert.Empty(service.Save(project));
+        Directory.Delete(repository);
+        Directory.Delete(otherDirectory);
+
+        var loaded = Assert.Single(service.List());
+        Assert.Equal(project.Id, loaded.Project!.Id);
+        Assert.Equal(2, loaded.Issues.Count);
+        Assert.All(loaded.Issues, issue => Assert.True(issue.IsResourceAvailability));
+        Assert.Empty(service.ValidateLaunch(loaded, good.Id));
+        var failure = Assert.Single(service.ValidateLaunch(loaded, affected.Id));
+        Assert.Contains(otherDirectory, failure.Message);
+        Assert.Contains("actions[1]", failure.Path);
+        Assert.NotEmpty(service.Save(loaded.Project, loaded.Revision));
+        Assert.False(new GitRepositoryService().GetStatus(repository).Success);
+
+        Directory.CreateDirectory(otherDirectory);
+        Assert.Empty(service.ValidateLaunch(loaded, affected.Id));
+        Directory.Delete(otherDirectory);
+        Assert.NotEmpty(service.ValidateLaunch(service.Get(project.Id), affected.Id));
+        Assert.NotEmpty(service.ValidateLaunch(loaded, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void LaunchRejectsStructuralAndStorageErrorsEvenWhenResourcesAreMissing()
+    {
+        var project = ProjectConfigurationService.Create("Example", root);
+        Assert.Empty(service.Save(project));
+        var path = Path.Combine(service.StorageDirectory, $"{project.Id:D}.json");
+        project.Name = "";
+        project.Repositories.Add(Path.Combine(root, "missing"));
+        File.WriteAllText(path, JsonSerializer.Serialize(project, ProjectConfigurationService.JsonOptions));
+        var loaded = service.Get(project.Id);
+        Assert.Contains(loaded.Issues, issue => !issue.IsResourceAvailability && issue.Path == "name");
+        Assert.Contains(service.ValidateLaunch(loaded, Guid.NewGuid()), issue => issue.Path == "name");
+        var wrongFile = Path.Combine(service.StorageDirectory, $"{Guid.NewGuid():D}.json");
+        File.Copy(path, wrongFile);
+        var mismatch = service.List().Single(item => item.Source == wrongFile);
+        Assert.Contains(service.ValidateLaunch(mismatch, Guid.NewGuid()), issue => issue.Path == "id");
+    }
+
+    [Fact]
     public void MissingActionsAndNullDescriptionAreReported()
     {
         var missing = Path.Combine(root, "missing.json");

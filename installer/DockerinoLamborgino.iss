@@ -65,9 +65,12 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
-  if AppRunning then
+  if AppRunning then begin
     Result := 'Close Dockerino Lamborgino before installing or upgrading. ' +
-      'Closing the app stops its managed terminal sessions. Retry afterwards.';
+      'Closing the app stops its managed terminal sessions, but not detached Docker containers. ' +
+      'Retry afterwards.';
+    Log(Result);
+  end;
 end;
 
 function InitializeUninstall: Boolean;
@@ -76,7 +79,7 @@ begin
   if not Result then begin
     Log('Close Dockerino Lamborgino before uninstalling.');
     if not UninstallSilent then
-      MsgBox('Close Dockerino Lamborgino before uninstalling. Closing the app stops its managed terminal sessions.',
+      MsgBox('Close Dockerino Lamborgino before uninstalling. Closing the app stops its managed terminal sessions, but not detached Docker containers.',
         mbError, MB_OK);
   end;
 end;

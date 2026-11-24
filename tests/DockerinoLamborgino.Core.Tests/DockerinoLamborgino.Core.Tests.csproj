@@ -15,6 +15,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../../src/DockerinoLamborgino.App/WindowsStartupCommand.cs" Link="WindowsStartupCommand.cs" />
     <ProjectReference Include="../../src/DockerinoLamborgino.Core/DockerinoLamborgino.Core.csproj" />
     <ProjectReference Include="../../src/DockerinoLamborgino.Cli/DockerinoLamborgino.Cli.csproj" />
   </ItemGroup>

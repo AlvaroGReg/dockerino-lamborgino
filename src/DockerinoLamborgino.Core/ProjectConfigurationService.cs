@@ -133,8 +133,21 @@ public sealed class ProjectConfigurationService
         void DirectoryPath(string? value, string path)
         {
             if (string.IsNullOrWhiteSpace(value)) issues.Add(new(path, "A directory is required."));
-            else if (!Path.IsPathFullyQualified(value) || !System.IO.Directory.Exists(value))
+            else if (!Path.IsPathFullyQualified(value))
                 issues.Add(new(path, "An existing absolute directory is required."));
+            else
+            {
+                try
+                {
+                    _ = Path.GetFullPath(value);
+                    if (!System.IO.Directory.Exists(value))
+                        issues.Add(new ConfigurationIssue(path, $"Directory is unavailable: {value}") { IsResourceAvailability = true });
+                }
+                catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+                {
+                    issues.Add(new(path, "A valid absolute directory is required."));
+                }
+            }
         }
         Id(project.Id, "id");
         Required(project.Name, "name");
@@ -198,6 +211,31 @@ public sealed class ProjectConfigurationService
                     previous.Add(step.Id);
                 }
             }
+        }
+        return issues;
+    }
+
+    // Loading retains all diagnostics; operations reject structural errors and only
+    // the resources they actually use. Recheck availability at operation time.
+    public IReadOnlyList<ConfigurationIssue> ValidateLaunch(ProjectLoadResult loaded, Guid actionId)
+    {
+        var issues = loaded.Issues.Where(issue => !issue.IsResourceAvailability).ToList();
+        if (loaded.Project is null) return issues;
+        var actionIndex = loaded.Project.Actions?.FindIndex(action => action?.Id == actionId) ?? -1;
+        if (actionIndex < 0)
+        {
+            issues.Add(new("actionId", $"Action not found: {actionId}"));
+            return issues;
+        }
+        var action = loaded.Project.Actions![actionIndex];
+        if (action?.Processes is null) return issues;
+        for (int i = 0; i < action.Processes.Count; i++)
+        {
+            var directory = action.Processes[i]?.WorkingDirectory;
+            if (!string.IsNullOrWhiteSpace(directory) && Path.IsPathFullyQualified(directory) &&
+                !System.IO.Directory.Exists(directory))
+                issues.Add(new($"actions[{actionIndex}].processes[{i}].workingDirectory",
+                    $"Directory is unavailable: {directory}"));
         }
         return issues;
     }

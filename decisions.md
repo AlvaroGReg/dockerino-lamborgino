@@ -121,8 +121,8 @@ the current Windows user; do not automatically select a project or launch an
 action.
 
 **Why:** startup preference belongs to the application, not an individual
-project. An early draft located this option in the project-list footer; the
-implemented location is the dashboard header.
+project. Application options are accessible at the bottom of the dashboard's
+project-list column, independently of the selected project.
 
 ## D14. Asynchronous scoped terminal reset
 
@@ -134,7 +134,7 @@ outcome through launch inspection rather than the initiating CLI response.
 callers still need confirmation that the request was accepted. Acceptance
 cannot imply the replacement started successfully. The current-user pipe is a
 local trust boundary, not authentication of an individual terminal. See
-[RUN-019](specs/launches-and-sessions.md#reset-request-and-outcome-contract-open)
+[RUN-019](specs/launches-and-sessions.md#reset-request-and-outcome-contract)
 for the contract and implementation status.
 
 ## D15. Windows installer and WinGet distribution
@@ -169,6 +169,30 @@ and [install documentation](https://learn.microsoft.com/en-us/windows/package-ma
 See
 [quality and delivery](specs/quality-and-delivery.md) for requirements and
 [the plan](plan.md) for outstanding work.
+
+## D16. Consolidation before feature growth
+
+**Decision (2026-11-24):** dedicate version 1.1.0 to stabilizing the existing
+application, measuring and improving output performance, repeatable
+verification, and hardening delivery. Retain the current platform and product
+boundaries. WinGet remains the intended future distribution channel in D15,
+but introducing it is outside this consolidation milestone.
+
+**Why:** the review identified cross-resource validation coupling, stale Git
+refreshes, and output access tied to visible terminal views. Targeted changes
+to ownership and testable boundaries address these risks without the cost and
+regression surface of a rewrite. A different UI framework, wholesale MVVM
+migration, or database would not by itself fix them.
+
+Separate retained session history from presentation and support incremental
+output reads. Do not silently truncate retained output or change its offsets.
+An implementation detail or retention-policy change beyond the existing
+contract needs an explicit specification update. The implementation retains
+session output separately from visible tabs; verification status is tracked
+in the plan.
+
+See the [1.1.0 plan](plan.md#version-110-consolidation) for findings, sequencing,
+evidence, and release gates rather than duplicating the backlog here.
 
 ## Historical numbering
 

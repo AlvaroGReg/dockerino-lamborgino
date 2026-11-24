@@ -14,6 +14,7 @@ public partial class GitRepositoriesPanel : UserControl
     private IGitRepositoryAdapter? git;
     private ProjectConfiguration? project;
     private bool busy;
+    private long selectionVersion;
 
     public GitRepositoriesPanel()
     {
@@ -26,8 +27,10 @@ public partial class GitRepositoriesPanel : UserControl
     public void SetProject(ProjectConfiguration? selectedProject)
     {
         project = selectedProject;
+        selectionVersion++;
         repositories.Clear();
         OperationMessages.Clear();
+        GitSummary.ToolTip = null;
         NoRepositoriesText.Visibility = project?.Repositories?.Count is > 0 ? Visibility.Collapsed : Visibility.Visible;
         GitSummary.Text = project is null ? "Select a project" : $"{project.Repositories?.Count ?? 0} repositories";
 
@@ -53,12 +56,15 @@ public partial class GitRepositoriesPanel : UserControl
     {
         if (busy || project is null || git is null) return;
 
+        var selectedProject = project;
+        var version = selectionVersion;
         busy = true;
         RefreshButton.IsEnabled = false;
         GitSummary.Text = "Refreshing Git status…";
         try
         {
-            var entries = await git.ListAsync(project.Id.ToString());
+            var entries = await git.ListAsync(selectedProject.Id.ToString());
+            if (version != selectionVersion) return;
             repositories.Clear();
             foreach (var entry in entries)
             {
@@ -72,6 +78,7 @@ public partial class GitRepositoriesPanel : UserControl
         }
         catch (Exception ex)
         {
+            if (version != selectionVersion) return;
             GitSummary.Text = "Git status could not be loaded.";
             GitSummary.ToolTip = ex.Message;
             NoRepositoriesText.Visibility = Visibility.Collapsed;
@@ -80,6 +87,8 @@ public partial class GitRepositoriesPanel : UserControl
         {
             busy = false;
             RefreshButton.IsEnabled = true;
+            if (version != selectionVersion && project is not null)
+                await RefreshRepositoriesAsync();
         }
     }
 
@@ -135,18 +144,18 @@ public partial class GitRepositoriesPanel : UserControl
         busy = true;
         RefreshButton.IsEnabled = false;
         foreach (var repository in repositories) repository.IsBusy = true;
-        var projectId = project?.Id.ToString();
+        var version = selectionVersion;
         GitSummary.Text = $"Working on {row.Name}…";
         try
         {
             await operation();
-            if (project?.Id.ToString() == projectId)
+            if (version == selectionVersion)
                 OperationMessages[row.Entry.Path] = row.OperationMessage;
         }
         catch (Exception ex)
         {
             row.OperationMessage = $"ERROR — {ex.Message}";
-            if (project?.Id.ToString() == projectId)
+            if (version == selectionVersion)
                 OperationMessages[row.Entry.Path] = row.OperationMessage;
         }
         finally

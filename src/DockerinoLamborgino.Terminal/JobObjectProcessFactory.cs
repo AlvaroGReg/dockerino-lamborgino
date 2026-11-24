@@ -1,8 +1,12 @@
 using System.ComponentModel;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using EasyWindowsTerminalControl.Internals;
 using Microsoft.Win32.SafeHandles;
+
+[assembly: InternalsVisibleTo("DockerinoLamborgino.Terminal.Tests")]
 
 namespace DockerinoLamborgino.Terminal;
 
@@ -118,7 +122,8 @@ public sealed class JobObjectProcessFactory : IProcessFactory, IDisposable
                     ref startupInfo,
                     out var processInfo))
             {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not create the terminal process.");
+                var error = Marshal.GetLastWin32Error();
+                throw CreateProcessStartException(command, workingDirectory, error);
             }
 
             try
@@ -152,6 +157,33 @@ public sealed class JobObjectProcessFactory : IProcessFactory, IDisposable
 
             Marshal.FreeHGlobal(attributeList);
         }
+    }
+
+    internal static Win32Exception CreateProcessStartException(string command, string? workingDirectory, int error)
+    {
+        var text = command.AsSpan().TrimStart();
+        ReadOnlySpan<char> executable;
+        if (!text.IsEmpty && text[0] == '"')
+        {
+            var end = text[1..].IndexOf('"');
+            executable = end >= 0 ? text.Slice(1, end) : default;
+        }
+        else
+        {
+            var end = 0;
+            while (end < text.Length && !char.IsWhiteSpace(text[end])) end++;
+            executable = text[..end];
+        }
+
+        if (error == 2 &&
+            executable.Equals("pwsh.exe", StringComparison.OrdinalIgnoreCase) &&
+            (string.IsNullOrEmpty(workingDirectory) || Directory.Exists(workingDirectory)))
+        {
+            return new Win32Exception(error,
+                "PowerShell 7 (pwsh.exe) could not be found. Install PowerShell 7 or add its installation directory to PATH, then restart Dockerino Lamborgino.");
+        }
+
+        return new Win32Exception(error, "Could not create the terminal process.");
     }
 
     /// <summary>Forcibly terminates all processes currently in this session job.</summary>

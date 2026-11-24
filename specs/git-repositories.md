@@ -1,8 +1,10 @@
 # Git repository operations specification
 
 **Baseline:** repository association, status, branch operations, fetch, and
-fast-forward-only pull are implemented. User acceptance and some environment
-specific checks remain outstanding.
+fast-forward-only pull are implemented. Resource isolation and selection-refresh
+correctness have known gaps targeted by the
+[1.1.0 plan](../plan.md#version-110-consolidation). User acceptance and some
+environment-specific checks remain outstanding.
 
 ## 1. Repository association and visibility
 
@@ -10,8 +12,12 @@ specific checks remain outstanding.
   zero or more repository roots with a project through UI or CLI. A repository
   can be outside the project directory. Never discover repositories
   automatically.
-- **GIT-002 — Repository validation (Implemented).** Validate associated paths.
+- **GIT-002 — Repository validation (Partially implemented; isolation defect
+  open).** Validate associated paths.
   Projects with no valid repositories remain usable for non-Git features.
+  An associated directory becoming unavailable currently blocks unrelated
+  operations through project-wide validation; correction is tracked by
+  `CFG-025` and V110-01 in the consolidation plan.
 - **GIT-003 — Per-repository status (Implemented).** For each valid associated
   repository, show current branch and working-tree status.
 - **GIT-004 — Branch list (Implemented).** Show local and remote branches as
@@ -66,6 +72,11 @@ specific checks remain outstanding.
 - **GIT-033 — No extra Git mutations (Implemented).** Do not implement push,
   commit, stash, reset, automatic conflict resolution, or implicit
   synchronization.
+- **GIT-034 — Selection-consistent refresh (Implemented; deterministic regression checks added).** Publish
+  asynchronous repository results and errors only for the current project
+  selection. Switching or clearing selection during a query must discard stale
+  responses and must not lose the new selection's refresh. See V110-02 in the
+  consolidation plan.
 
 ## 5. Acceptance scenarios
 
@@ -85,6 +96,9 @@ specific checks remain outstanding.
 8. Verify no push, stash, commit, reset, branch creation unrelated to tracking,
    or unrequested synchronization occurs.
 9. Exercise authentication success and failure using the user's Git setup.
+10. **GIT-034:** delay A's status response, select B, then complete A's response.
+    Verify only B's repositories and diagnostics are shown and B is refreshed.
+    Repeat while clearing selection and with a failed stale query.
 
 ## 6. Verification references and gaps
 

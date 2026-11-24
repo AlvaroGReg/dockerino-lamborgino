@@ -50,25 +50,32 @@
 - **REL-024 — In-memory runtime state.** Active launches, sessions, and output
   are not persisted across app restarts. Project configuration and dashboard
   ordering are persisted.
-- **REL-025 — Windows installer (Planned).** Distribute the desktop application
+- **REL-025 — Windows installer (Partially implemented; release verification
+  open).** Distribute the desktop application
   and CLI together in one Windows x64 installer, with .NET 10 included so a
   separate .NET installation is not required. Make `dockerino` available from
   a new terminal and ensure the application and CLI can locate each other.
   PowerShell 7 and Git are external dependencies, not bundled components.
   Windows ARM64 packaging is deferred.
+  An initial Inno Setup installer and publish/build scripts exist; clean-machine
+  and full installation/upgrade acceptance remain open in [plan.md](../plan.md).
 - **REL-026 — WinGet distribution and upgrades (Planned).** Publish the
   installer through WinGet and distribute subsequent versions as WinGet
   upgrades under `AlvaroGReg.DockerinoLamborgino`, subject to repository
   acceptance. Declare `Microsoft.PowerShell` and `Git.Git` as package
   dependencies; verify detection and installation behavior. Do not rely on
   automatic updates being enabled on the user's computer.
-- **REL-027 — Upgrade safety (Planned).** An upgrade replaces the installed
+  This remains future delivery work, outside the 1.1.0 consolidation milestone.
+- **REL-027 — Upgrade safety (Partially implemented; acceptance open).** An
+  upgrade replaces the installed
   application and CLI without deleting user project configuration or dashboard
   ordering. If the app is running, ask the user to close it before an interactive
   upgrade and explain that closing it stops its managed sessions, but not
   detached Docker containers. For a non-interactive upgrade, fail safely with
   an actionable result rather than closing the app or waiting for input.
   Unattended upgrades must succeed when the app is not running.
+  The installer includes running-app guards and detached-container guidance;
+  their integrated acceptance remains incomplete.
 
 ## 4. Verification policy
 
@@ -83,6 +90,19 @@
 - **REL-033 — Real terminal integration.** Verify keyboard input, output,
   resizing, and process containment with real interactive Windows shells, in
   addition to unit tests.
+- **REL-034 — Repeatable verification (Planned for 1.1.0).** Provide a documented
+  entry point and Windows CI for noninteractive builds, xUnit tests, standalone
+  sequence checks, and coverage collection. Preserve results with revision,
+  environment, and tool versions. Treat interactive desktop and clean-machine
+  packaging checks as separate explicit release gates, not implied CI passes.
+- **REL-035 — Incremental output performance (Open; 1.1.0 correction).** Serve
+  requested session-output suffixes without repeatedly materializing the
+  consumed history or requiring dispatcher-bound history reads. Preserve
+  retained output and offset semantics. Before accepting the optimization,
+  define representative workloads and budgets and record comparable
+  before/after allocation and latency measurements, including large histories,
+  no-new-output polling, and concurrent followers. See V110-04 in the
+  [consolidation plan](../plan.md#version-110-consolidation).
 
 ## 5. Out of scope
 
@@ -119,3 +139,8 @@
    interaction, dependency handling, upgrade with persisted configuration, and
    uninstallation on a representative clean Windows x64 system. Exercise
    upgrade while the app is running and unattended installation and upgrade.
+
+For 1.1.0, the existing installer must pass those installation and upgrade
+checks even though publishing a WinGet package is deferred. The
+[milestone acceptance ledger](../plan.md#release-acceptance-ledger) tracks the
+open gates, including output performance and repeatable verification.

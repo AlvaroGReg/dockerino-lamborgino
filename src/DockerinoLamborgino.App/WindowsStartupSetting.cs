@@ -1,6 +1,4 @@
 using Microsoft.Win32;
-using System.IO;
-using System.Reflection;
 
 namespace DockerinoLamborgino.App;
 
@@ -17,26 +15,17 @@ internal sealed class WindowsStartupSetting
 
     public void SetEnabled(bool enabled)
     {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true)
-            ?? Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true);
-
         if (enabled)
         {
-            var processPath = Environment.ProcessPath
-                ?? throw new InvalidOperationException("Could not determine the application executable.");
-            var command = $"\"{processPath}\"";
-            if (Path.GetFileNameWithoutExtension(processPath).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
-            {
-                var assemblyPath = Assembly.GetEntryAssembly()?.Location;
-                if (string.IsNullOrWhiteSpace(assemblyPath))
-                    throw new InvalidOperationException("Could not determine the application assembly path.");
-                command += $" \"{assemblyPath}\"";
-            }
+            var command = WindowsStartupCommand.Create(Environment.ProcessPath, WindowsStartupCommand.GetEntryAssemblyPath);
+            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true)
+                ?? Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true);
             key.SetValue(ValueName, command);
         }
         else
         {
-            key.DeleteValue(ValueName, throwOnMissingValue: false);
+            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            key?.DeleteValue(ValueName, throwOnMissingValue: false);
         }
     }
 }

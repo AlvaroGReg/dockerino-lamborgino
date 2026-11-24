@@ -266,7 +266,7 @@ return acceptance rather than the final outcome; use `launch inspect` to see
 pending, succeeded, or failed reset outcomes. A self-reset can terminate its own
 CLI process before the response is displayed. Reset requires a running app and
 does not start it. See
-[RUN-019](specs/launches-and-sessions.md#reset-request-and-outcome-contract-open).
+[RUN-019](specs/launches-and-sessions.md#reset-request-and-outcome-contract).
 
 The terminal forwards `dockerino` commands to the CLI executable. Place
 `DockerinoLamborgino.Cli.exe` and its accompanying build or publish files beside
@@ -327,6 +327,19 @@ dashboard shows project tools after project selection and terminal tabs when
 sessions exist. Terminal tabs, project rows, and the floating launcher use amber
 for starting sessions and red for failures; project and launcher summaries clear
 when their relevant sessions no longer need attention.
+
+Version **1.1.0 is planned as a consolidation release**, focused on reliability,
+measured performance, repeatable verification, and hardening the existing
+delivery path, not new features or a rewrite. See the
+[milestone scope and acceptance gates](plan.md#version-110-consolidation).
+WinGet remains future distribution work outside this milestone.
+
+The milestone's resource isolation, Git selection and incremental-read
+corrections have been implemented. A desktop smoke test now covers output and
+followers after closing both types of terminal tab. Deterministic checks and an
+in-process output benchmark have been added, but broader desktop, lifecycle,
+prerequisite and installer verification remain open; see the
+[release acceptance ledger](plan.md#release-acceptance-ledger).
 
 The terminal integration uses EasyWindowsTerminalControl 1.0.38 (declared MIT)
 and depends directly on CI.Microsoft.Terminal.Wpf and

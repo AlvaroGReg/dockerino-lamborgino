@@ -100,7 +100,7 @@ public partial class MainWindow : Window
     private void RefreshProjects(Guid? preferredId = null)
     {
         var selectedId = preferredId ?? (ProjectsList.SelectedItem as ProjectConfiguration)?.Id;
-        var loaded = configurationService.List().Where(r => r.Project is not null && r.Issues.Count == 0)
+        var loaded = configurationService.List().Where(r => r.Project is not null && r.Issues.All(i => i.IsResourceAvailability))
             .Select(r => r.Project!).ToArray();
         projects.Clear();
         IReadOnlyList<ProjectConfiguration> ordered = loaded;
@@ -141,6 +141,11 @@ public partial class MainWindow : Window
         displayedActions.Clear();
         if (project is not null)
         {
+            var diagnostics = configurationService.Get(project.Id).Issues;
+            if (diagnostics.Count > 0)
+                StatusText.Text = string.Join(Environment.NewLine, diagnostics.Select(i => $"{i.Path}: {i.Message}"));
+            else
+                StatusText.Text = "";
             IReadOnlyList<LaunchAction> ordered = project.Actions;
             try { ordered = DisplayOrderStore.Apply(project.Actions, displayOrder.Read(project.Id), a => a.Id); }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
@@ -326,6 +331,7 @@ public partial class MainWindow : Window
         }
         view.StateChanged += Report;
         var info = registry.Open(null, new ViewSession(view));
+        sessionOutput.TryAdd(info.Id, view.OutputHistory);
         sessionId = info.Id;
         foreach (var state in pending) Report(state);
         var item = new SessionItem(info.Id, $"Terminal {sessions.Count + 1}", view);

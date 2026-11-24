@@ -36,7 +36,9 @@ Source: https://github.com/microsoft/terminal/blob/9ae724aa5b080aafbeea2bbf88db6
 The .NET runtime and Windows Desktop runtime packages include the following
 license. The installer build is configured to include the license files from
 the exact restored runtime packs and the .NET runtime pack's third-party
-notices under `licenses`. Verify the generated installer contains these files.
+notices under `licenses`. On 2026-11-24 an Inno Setup 7.1.1 build listed these
+files among the inputs compressed into a 1.1.0 test installer; extraction and
+the completeness of the notice bundle remain to be verified.
 
 Copyright (c) .NET Foundation and Contributors
 
@@ -63,6 +65,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ## Outstanding release review
+
+On 2026-11-24, `dotnet list
+src/DockerinoLamborgino.App/DockerinoLamborgino.App.csproj package
+--include-transitive` with .NET SDK 10.0.404 reported the three NuGet packages
+listed above for the app. This package listing is not an audit of the contents
+or licensing of native binaries, runtime packs, or the generated installer.
 
 For `EasyWindowsTerminalControl`, the package metadata explicitly declares
 MIT and its copyright notice is reproduced above. The `LICENSE` file at its

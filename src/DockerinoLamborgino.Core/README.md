@@ -23,3 +23,15 @@ Unknown IDs throw `KeyNotFoundException`. The registry serializes operations,
 including calls to implementations, so implementations must not block
 indefinitely or call back into the registry. The application is responsible
 for stopping its sessions on shutdown. Nothing persists across restarts.
+
+## Integration boundary
+
+This registry describes independent sessions; configured launch sessions are
+owned by `LaunchOrchestrator`. The application also maintains visible tabs and
+terminal views. The registry retains identity/state, not terminal output.
+The application retains each session's `SessionOutputHistory` separately from
+its tab, and reads suffixes using UTF-16 offsets. Closing a tab stops the session;
+completion is reported after its output reader finishes. A desktop smoke test
+checks closed-tab output and followers for both session types. Further release
+verification is tracked in the
+[1.1.0 consolidation plan](../../plan.md#version-110-consolidation).
