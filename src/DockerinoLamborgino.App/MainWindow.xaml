@@ -46,8 +46,6 @@
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <DockPanel Margin="16,8">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button Content="⚙" ToolTip="Application options" AutomationProperties.Name="Application options"
-                                Click="ApplicationOptions_Click" Margin="2" Width="34" Height="30" Padding="0"/>
                         <Button Content="—" ToolTip="Minimize" AutomationProperties.Name="Minimize dashboard" Click="Minimize_Click" Margin="2" Width="34" Height="30" Padding="0"/>
                         <Button Content="□" ToolTip="Maximize or restore" AutomationProperties.Name="Maximize or restore dashboard" Click="Maximize_Click" Margin="2" Width="34" Height="30" Padding="0"/>
                         <Button Content="×" ToolTip="Hide dashboard" AutomationProperties.Name="Hide dashboard" Click="Hide_Click" Margin="2" Width="34" Height="30" Padding="0"/>
@@ -70,6 +68,9 @@
                         <TextBlock DockPanel.Dock="Top" Text="PROJECTS" Style="{StaticResource SectionLabel}" Margin="0,0,0,12"/>
                         <Button x:Name="AddProjectButton" DockPanel.Dock="Bottom" Content="+  Add project" Click="FindProject_Click"
                                 HorizontalContentAlignment="Left" Margin="0,10,0,0" AutomationProperties.Name="Add project"/>
+                        <Button x:Name="ApplicationOptionsButton" DockPanel.Dock="Bottom" Content="⚙  Application options"
+                                Click="ApplicationOptions_Click" HorizontalContentAlignment="Left" Margin="0,0,0,6"
+                                AutomationProperties.Name="Application options"/>
                         <Button x:Name="NewTerminalButton" DockPanel.Dock="Bottom" Content="+  New terminal"
                                 Click="NewSession_Click" HorizontalContentAlignment="Left" Margin="0,0,0,6"
                                 Background="#18282A" BorderBrush="#29413F" Foreground="#89A6A3"

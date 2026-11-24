@@ -144,10 +144,12 @@ The documented publish target is `win-x64`; other Windows architectures require 
 ### D13. Application startup with Windows
 
 **Decision:** expose a Windows startup option in application-level options,
-accessible from the dashboard header. When enabled, register the application
-for the current Windows user's sign-in. This starts the application only; it
-does not select a project or run configured launch actions or processes. The
-setting is independent of project configuration.
+accessible from the persistent project-list footer alongside new-terminal and
+add-project actions, rather than from the dashboard header. This keeps the
+setting available across dashboard views. When enabled, register the
+application for the current Windows user's sign-in. This starts the
+application only; it does not select a project or run configured launch
+actions or processes. The setting is independent of project configuration.
 
 ## 4. Proposed functional flow
 
