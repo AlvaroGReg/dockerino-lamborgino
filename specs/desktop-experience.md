@@ -2,7 +2,8 @@
 
 **Baseline:** latest requested dashboard/navigation revision, project/action
 ordering, quick-launch, and application startup option are implemented. Some
-visual/manual acceptance evidence is still outstanding.
+visual/manual acceptance evidence is still outstanding. The project-status
+presentation and dashboard-column collapse behavior below are planned.
 
 ## 1. Window roles and navigation
 
@@ -64,6 +65,18 @@ visual/manual acceptance evidence is still outstanding.
   indicator when no session is loading, failed, or has an unacknowledged
   configured-command failure. Loading is amber and error is red; the launcher exposes
   the state through its tooltip and accessible name.
+- **UI-017 — Project running-session summary (Planned).** In addition to its
+  existing error/loading status, a project row shows a green indicator when at
+  least one associated terminal is running and none has a higher-priority error
+  or loading status. Error takes precedence over loading, which takes precedence
+  over running. New-terminal sessions without a project association are excluded.
+  Place the status indicator before the project name so the name can be
+  ellipsized when the row cannot fit the name, indicator, and row actions on one
+  line. Provide an accessible tooltip for the state.
+- **UI-018 — Collapsible dashboard columns (Planned).** Provide a collapse
+  control for both the project-list and project-tools columns. Collapsing
+  project tools hides that column. Collapsing the project list hides its contents
+  but leaves a visible control/icon that can restore the column.
 
 ## 3. Application options and CLI activation
 
@@ -103,6 +116,13 @@ visual/manual acceptance evidence is still outstanding.
     indicators clear when the corresponding sessions are no longer loading or
     failed and have no unacknowledged configured-command failure. Verify that
     acknowledging one command failure does not hide another error.
+11. Verify an associated running terminal gives its project row a green status
+    indicator when no higher-priority status applies; verify precedence,
+    unassociated-terminal exclusion, accessible tooltip, and name truncation
+    when the row is constrained.
+12. Collapse and restore each dashboard column. Verify the project-tools column
+    disappears when collapsed and the project-list column retains a visible
+    restore control.
 
 ## 5. Verification references and gaps
 

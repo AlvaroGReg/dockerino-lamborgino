@@ -80,6 +80,13 @@ and UI acceptance evidence remains environment-dependent; see
   not. Actual terminal failure remains visible, and other sessions' errors
   continue to contribute to project and launcher indicators. Interactive
   commands are not monitored for subsequent failures.
+- **RUN-034 — Close all terminal sessions (Planned).** Provide a control beside
+  the add-terminal control that closes all currently open terminal tabs and
+  stops their managed sessions. If one or more sessions are still running and
+  will be interrupted, ask for confirmation before stopping any of them.
+  Confirming stops all targeted sessions; cancelling leaves all sessions and
+  tabs unchanged. Do not target processes outside those managed sessions, and
+  do not imply that detached Docker containers are stopped.
 - **RUN-019 — Reset a configured terminal (Implemented; integrated concurrency
   and delivery verification open).** A user can request
   `dockerino reset` from a terminal created by a configured launch to close
@@ -274,6 +281,10 @@ projects refresh [project-id]
     tabs. Verify retained session inspection and output remain accessible,
     consumed offsets remain valid, and followers receive final output and
     completion without an artificial history reset.
+15. **RUN-034:** close all terminal tabs when no session is running and verify
+    they all close. Repeat with running sessions; verify cancelling changes
+    nothing and confirming stops and closes every targeted session without
+    affecting unrelated processes or detached Docker containers.
 
 ## 6. Verification references and gaps
 

@@ -313,10 +313,10 @@ credential helpers are not sandboxed.
 The [`dockerino-lamborgino-cli` skill](https://github.com/AlvaroGReg/alvarogreg-skills/tree/main/skills/dockerino-lamborgino-cli)
 helps AI agents use the CLI to configure projects, operate on associated Git
 repositories, run saved actions, and inspect or stop managed sessions. Install
-it with the Skills CLI:
+it globally so it is available to your supported AI agents across projects:
 
 ```powershell
-npx skills add AlvaroGReg/alvarogreg-skills --skill dockerino-lamborgino-cli
+npx skills add AlvaroGReg/alvarogreg-skills --skill dockerino-lamborgino-cli --global
 ```
 
 ## Status and limitations

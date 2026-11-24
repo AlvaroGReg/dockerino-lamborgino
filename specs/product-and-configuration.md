@@ -96,6 +96,16 @@ agent's resulting configuration must still be explicitly reviewed/saved.
   launching with missing required resources. Loading preserves availability
   diagnostics and the selected launch rechecks its own process directories; see V110-01 in the
   [consolidation plan](../plan.md#version-110-consolidation).
+- **CFG-026 — Direct project selection for editing (Planned).** In the
+  instructions and configuration window, selecting a saved project selects it
+  for editing; do not require a separate **Edit selected** button. When changing
+  from a project with unsaved changes, offer **Save**, **Discard changes**, and
+  **Cancel**. Save persists the current edits before switching; if saving fails,
+  remain on the current project with its edits intact. Discard changes switches
+  without persisting those edits. Cancel keeps the current project and edits.
+- **CFG-027 — Actions as the primary configuration tab (Planned).** Place
+  **Actions** before **Repositories** in the instructions and configuration
+  window, and select **Actions** by default when that window opens.
 
 ### CLI configuration interface
 
@@ -138,6 +148,13 @@ agent's resulting configuration must still be explicitly reviewed/saved.
    repository or another action's working directory unavailable. Verify the
    project remains visible with diagnostics and an unaffected action still
    launches. Verify the affected operation fails with an actionable error.
+9. **CFG-026 / CFG-027:** open instructions and configuration and verify
+   **Actions** is first and selected by default. Select a saved project and
+   verify it opens for editing without an **Edit selected** button. Make an
+   unsaved change and attempt to select another project; verify Save persists
+   before switching, a failed save keeps the current project and edits,
+   Discard switches without saving, and Cancel keeps the current project and
+   edits.
 
 ## 5. Verification references and gaps
 

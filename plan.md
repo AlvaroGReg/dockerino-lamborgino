@@ -177,6 +177,16 @@ and actual sign-in startup of those newer builds have not been verified.
 | Dashboard/navigation revisions | Latest requested revision implemented, including terminal-status color indicators | The terminal lifecycle smoke passed on 2026-11-24; color rendering still needs visual acceptance, and explicit design acceptance was not separately stated. | [Desktop experience](specs/desktop-experience.md) |
 | Delivery hardening | Partial | Release checklist and environment-specific checks remain. | [Quality and delivery](specs/quality-and-delivery.md) |
 
+## Planned UI improvements (outside version 1.1.0)
+
+The following requested behavior is documented for future implementation and
+does not expand the 1.1.0 consolidation scope:
+
+- Dashboard terminal controls and project status: `RUN-034` and `UI-017`.
+- Collapsible dashboard columns: `UI-018`.
+- Direct project selection, unsaved-change handling, and Actions-first
+  configuration navigation: `CFG-026` and `CFG-027`.
+
 ## Outstanding checks and historical evidence
 
 The 1.1.0 workstreams and release ledger above govern milestone closure. This
