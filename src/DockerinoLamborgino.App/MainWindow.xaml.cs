@@ -85,14 +85,15 @@ public partial class MainWindow : Window
         var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select one project directory" };
         if (dialog.ShowDialog(this) == true)
         {
-            new ProjectManagerWindow(projectConfigurations, dialog.FolderName) { Owner = this }.ShowDialog();
+            new ProjectManagerWindow(projectConfigurations, displayOrder, directory: dialog.FolderName) { Owner = this }.ShowDialog();
             RefreshProjects();
         }
     }
 
     private void ManageProjects_Click(object sender, RoutedEventArgs e)
     {
-        new ProjectManagerWindow(projectConfigurations) { Owner = this }.ShowDialog();
+        var selectedProjectId = (ProjectsList.SelectedItem as ProjectConfiguration)?.Id;
+        new ProjectManagerWindow(projectConfigurations, displayOrder, projectId: selectedProjectId) { Owner = this }.ShowDialog();
         RefreshProjects((ProjectsList.SelectedItem as ProjectConfiguration)?.Id);
     }
 
@@ -326,6 +327,17 @@ public partial class MainWindow : Window
         catch (FormatException) { button.Background = System.Windows.Media.Brushes.DarkSlateGray; }
     }
 
+    private void QuickLaunchButton_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button || button.DataContext is not LaunchAction action) return;
+        try
+        {
+            button.Foreground = (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter()
+                .ConvertFromString(action.Color)!;
+        }
+        catch (FormatException) { button.Foreground = System.Windows.Media.Brushes.DarkSlateGray; }
+    }
+
     private async void CloseSessionTab_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as System.Windows.Controls.Button)?.Tag is not SessionItem item) return;
@@ -410,12 +422,17 @@ public partial class MainWindow : Window
     }
 
     private void Hide_Click(object sender, RoutedEventArgs e) => Hide();
+    private void ApplicationOptions_Click(object sender, RoutedEventArgs e) =>
+        new ApplicationOptionsWindow { Owner = this }.ShowDialog();
+
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void Maximize_Click(object sender, RoutedEventArgs e) =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.OriginalSource is DependencyObject source &&
+            FindAncestor<System.Windows.Controls.Button>(source) is not null) return;
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
     }
 

@@ -134,6 +134,10 @@ checks; explicit design acceptance has not been separately stated.**
   use compact spacing; actions can opt into quick-launch play buttons in those
   rows. Persist the optional `isQuickLaunch` setting and expose it in the UI
   editor and CLI JSON configuration.
+- Add application-level options from the dashboard header, including a
+  current-user Windows sign-in startup toggle that starts the app without
+  selecting a project or running its configured actions. See
+  [D13](decisions.md#d13-application-startup-with-windows).
 - Verify the updated UI manually and with appropriate UI tests; record the
   design decisions and implementation evidence.
 

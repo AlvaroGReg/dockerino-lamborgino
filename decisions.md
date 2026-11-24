@@ -141,6 +141,14 @@ CLI project JSON.
 
 The documented publish target is `win-x64`; other Windows architectures require publishing for their corresponding runtime identifier. Bundling the runtime increases executable size, and native libraries may be extracted to a temporary directory at startup. The two variants use separate output directories to avoid overwriting one another.
 
+### D13. Application startup with Windows
+
+**Decision:** expose a Windows startup option in application-level options,
+accessible from the dashboard header. When enabled, register the application
+for the current Windows user's sign-in. This starts the application only; it
+does not select a project or run configured launch actions or processes. The
+setting is independent of project configuration.
+
 ## 4. Proposed functional flow
 
 ```text

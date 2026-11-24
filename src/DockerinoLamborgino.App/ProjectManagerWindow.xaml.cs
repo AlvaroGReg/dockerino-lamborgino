@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -9,18 +10,35 @@ namespace DockerinoLamborgino.App;
 public partial class ProjectManagerWindow : Window
 {
     private readonly IProjectConfigurationAdapter adapter;
+    private readonly DisplayOrderStore displayOrder;
     private string? projectId;
     private string? revision;
     private List<LaunchAction> actions = [];
     private List<string> repositories = [];
 
-    public ProjectManagerWindow(IProjectConfigurationAdapter adapter, string? directory = null)
+    public ProjectManagerWindow(
+        IProjectConfigurationAdapter adapter,
+        DisplayOrderStore displayOrder,
+        string? directory = null,
+        Guid? projectId = null)
     {
         this.adapter = adapter;
+        this.displayOrder = displayOrder;
         InitializeComponent();
         RefreshProjects();
         DirectoryBox.Text = directory ?? "";
         RefreshEditor();
+        if (projectId is Guid selectedId)
+        {
+            var entry = ProjectsList.Items.Cast<ProjectConfigurationEntry>()
+                .FirstOrDefault(project => Guid.TryParse(project.Id, out var id) && id == selectedId);
+            if (entry is not null)
+            {
+                ProjectsList.SelectedItem = entry;
+                try { LoadDraft(adapter.Load(entry.Id)); }
+                catch (Exception ex) { ErrorsBox.Text = ex.Message; }
+            }
+        }
     }
 
     private void RefreshProjects()
@@ -28,8 +46,19 @@ public partial class ProjectManagerWindow : Window
         try
         {
             var result = adapter.List();
-            ProjectsList.ItemsSource = result.Projects;
-            ErrorsBox.Text = string.Join(Environment.NewLine, result.Errors);
+            var errors = result.Errors.ToList();
+            IReadOnlyList<ProjectConfigurationEntry> ordered = result.Projects;
+            try
+            {
+                ordered = DisplayOrderStore.Apply(result.Projects, displayOrder.Read(),
+                    project => Guid.Parse(project.Id));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                errors.Insert(0, $"Could not load project order: {ex.Message}");
+            }
+            ProjectsList.ItemsSource = ordered;
+            ErrorsBox.Text = string.Join(Environment.NewLine, errors);
         }
         catch (Exception ex) { ErrorsBox.Text = ex.Message; }
     }

@@ -134,6 +134,11 @@ handle without the directory path. Actions marked **Lanzado rápido** in their
 configuration also show a play button in the project row, allowing that saved
 action to start without first selecting the project and opening its tools.
 
+Select the gear in the dashboard header to open **Application options**. The
+**Start Dockerino Lamborgino with Windows** option starts the application when
+the current Windows user signs in. It does not select a project or run any
+configured actions or processes.
+
 ## Configure projects with the CLI
 
 The CLI and application use the shared project configuration service. Projects

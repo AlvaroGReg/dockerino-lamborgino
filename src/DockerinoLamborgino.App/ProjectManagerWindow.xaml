@@ -1,8 +1,117 @@
 <Window x:Class="DockerinoLamborgino.App.ProjectManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Project configuration" Width="1000" Height="800" MinWidth="750" MinHeight="600"
-        WindowStartupLocation="CenterOwner">
+        Title="Project instructions &amp; configuration" Width="1000" Height="800" MinWidth="750" MinHeight="600"
+        WindowStartupLocation="CenterOwner" Background="#101A1D" Foreground="#D9E8E6">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Accent" Color="#72C6BD"/>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="#DCECE9"/>
+            <Setter Property="Background" Value="#203337"/>
+            <Setter Property="BorderBrush" Value="#385451"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#72C6BD"/></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#A6F0E5"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#D9E8E6"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="#D9E8E6"/>
+            <Setter Property="Background" Value="#18282A"/>
+            <Setter Property="BorderBrush" Value="#385451"/>
+            <Setter Property="CaretBrush" Value="#D9E8E6"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Foreground" Value="#D9E8E6"/>
+            <Setter Property="Background" Value="#152427"/>
+            <Setter Property="BorderBrush" Value="#385451"/>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="6,4"/>
+                        <Setter Property="Margin" Value="1"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="ItemSurface" Background="Transparent" CornerRadius="4"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemSurface" Property="Background" Value="#284340"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemSurface" Property="BorderBrush" Value="#72C6BD"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="#111E20"/>
+            <Setter Property="BorderBrush" Value="#385451"/>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#D9E8E6"/>
+            <Setter Property="Background" Value="#152427"/>
+            <Setter Property="BorderBrush" Value="#385451"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabSurface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4,4,0,0" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabSurface" Property="Background" Value="#203337"/>
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="#72C6BD"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabSurface" Property="Background" Value="#284340"/>
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="#72C6BD"/>
+                                <Setter Property="Foreground" Value="#A6F0E5"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border BorderBrush="#365C59" BorderThickness="1">
     <Grid Margin="12">
         <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <DockPanel Grid.Column="0">
@@ -65,4 +174,5 @@
             </TabControl>
         </DockPanel>
     </Grid>
+    </Border>
 </Window>

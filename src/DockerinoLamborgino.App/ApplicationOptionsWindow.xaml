@@ -1,0 +1,26 @@
+<Window x:Class="DockerinoLamborgino.App.ApplicationOptionsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Application options" Width="420" Height="230" MinWidth="380" MinHeight="210"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        Background="#101A1D" Foreground="#D9E8E6">
+    <Border BorderBrush="#365C59" BorderThickness="1" Padding="20">
+        <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Bottom">
+                <TextBlock x:Name="StatusText" Foreground="#F0A99C" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancel" Click="Cancel_Click" Padding="12,6" Margin="0,0,8,0"/>
+                    <Button Content="Save" Click="Save_Click" Padding="12,6" IsDefault="True"/>
+                </StackPanel>
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Text="APPLICATION OPTIONS" Foreground="#78AAA5" FontSize="10"
+                           FontWeight="SemiBold" Margin="0,0,0,14"/>
+                <CheckBox x:Name="StartWithWindowsCheckBox" Content="Start Dockerino Lamborgino with Windows"
+                          AutomationProperties.Name="Start application with Windows"/>
+                <TextBlock Text="Starts the application when you sign in. It does not launch any configured project actions or processes."
+                           Foreground="#89A6A3" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>

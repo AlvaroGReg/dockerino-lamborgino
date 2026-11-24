@@ -46,6 +46,8 @@
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <DockPanel Margin="16,8">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="⚙" ToolTip="Application options" AutomationProperties.Name="Application options"
+                                Click="ApplicationOptions_Click" Margin="2" Width="34" Height="30" Padding="0"/>
                         <Button Content="—" ToolTip="Minimize" AutomationProperties.Name="Minimize dashboard" Click="Minimize_Click" Margin="2" Width="34" Height="30" Padding="0"/>
                         <Button Content="□" ToolTip="Maximize or restore" AutomationProperties.Name="Maximize or restore dashboard" Click="Maximize_Click" Margin="2" Width="34" Height="30" Padding="0"/>
                         <Button Content="×" ToolTip="Hide dashboard" AutomationProperties.Name="Hide dashboard" Click="Hide_Click" Margin="2" Width="34" Height="30" Padding="0"/>
@@ -106,9 +108,10 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Button Content="▶" DataContext="{Binding}" Click="QuickLaunch_Click"
+                                                            Loaded="QuickLaunchButton_Loaded"
                                                             Width="22" Height="22" Padding="0" Margin="1,0"
                                                             Background="Transparent" BorderThickness="0"
-                                                            Foreground="#72C6BD" FontSize="11"
+                                                            FontSize="11"
                                                             ToolTip="{Binding Name}"
                                                             AutomationProperties.Name="{Binding Name}"/>
                                                 </DataTemplate>
