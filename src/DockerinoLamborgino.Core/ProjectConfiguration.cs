@@ -14,6 +14,9 @@ public sealed class ProjectConfiguration
     public List<string> Repositories { get; set; } = [];
     [JsonRequired]
     public List<LaunchAction> Actions { get; set; } = [];
+    [JsonIgnore]
+    public IReadOnlyList<LaunchAction> QuickLaunchActions =>
+        (Actions ?? []).Where(action => action?.IsQuickLaunch == true).ToArray();
 }
 
 public sealed class LaunchAction
@@ -22,6 +25,7 @@ public sealed class LaunchAction
     public string Name { get; set; } = "";
     public string Color { get; set; } = "";
     public string Description { get; set; } = "";
+    public bool IsQuickLaunch { get; set; }
     public List<LaunchProcess> Processes { get; set; } = [];
 }
 

@@ -129,7 +129,10 @@ isolated testing, the application accepts
 In the dashboard, drag the handle next to a project or launch to reorder it.
 The order is saved separately from project configurations and restored on
 restart. Launch order is specific to each project; reordering does not run an
-action or change its commands.
+action or change its commands. Project-list rows show the project name and drag
+handle without the directory path. Actions marked **Lanzado rápido** in their
+configuration also show a play button in the project row, allowing that saved
+action to start without first selecting the project and opening its tools.
 
 ## Configure projects with the CLI
 
@@ -165,7 +168,10 @@ and 2 for invalid CLI syntax.
 Each project has a unique GUID `id`, a name, an existing absolute `directory`,
 an optional array of distinct absolute repository paths, and an `actions`
 array. Each action has a unique GUID, name, `#RRGGBB` color, optional
-description, and one or more processes. Each process has a unique GUID, name,
+description, an optional `isQuickLaunch` boolean, and one or more processes.
+Set `isQuickLaunch` to `true` to show a play button for that action beside the
+project name in the dashboard; omitted values default to `false`. Each process
+has a unique GUID, name,
 existing absolute `workingDirectory`, and one or more steps. Each step has a
 unique GUID and command, and may refer to an earlier step with
 `dependsOnSuccessOf`. Steps run in array order; a failure skips later steps in

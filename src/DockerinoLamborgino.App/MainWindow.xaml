@@ -78,8 +78,8 @@
                                  AllowDrop="True" DragOver="Order_DragOver" Drop="Projects_Drop">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="Padding" Value="10,9"/>
-                                    <Setter Property="Margin" Value="0,2"/>
+                                    <Setter Property="Padding" Value="6,3"/>
+                                    <Setter Property="Margin" Value="0,1"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <Setter Property="Template">
                                         <Setter.Value>
@@ -98,15 +98,28 @@
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <DockPanel>
+                                    <DockPanel LastChildFill="True">
+                                        <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding QuickLaunchActions}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="▶" DataContext="{Binding}" Click="QuickLaunch_Click"
+                                                            Width="22" Height="22" Padding="0" Margin="1,0"
+                                                            Background="Transparent" BorderThickness="0"
+                                                            Foreground="#72C6BD" FontSize="11"
+                                                            ToolTip="{Binding Name}"
+                                                            AutomationProperties.Name="{Binding Name}"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <TextBlock DockPanel.Dock="Left" Text="⋮⋮" Foreground="#89A6A3" FontSize="16" Margin="0,0,8,0"
                                                    Cursor="SizeAll" ToolTip="Drag to reorder project" Tag="{Binding}"
                                                    AutomationProperties.Name="Drag project to reorder"
                                                    PreviewMouseLeftButtonDown="OrderHandle_MouseDown" PreviewMouseLeftButtonUp="OrderHandle_MouseUp" PreviewMouseMove="OrderHandle_MouseMove"/>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Directory}" Foreground="#829D99" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
-                                        </StackPanel>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
                                     </DockPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

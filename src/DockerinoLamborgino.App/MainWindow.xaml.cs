@@ -119,6 +119,9 @@ public partial class MainWindow : Window
     private void ProjectsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is System.Windows.Controls.TextBlock { Tag: ProjectConfiguration }) return;
+        if (e.OriginalSource is DependencyObject quickLaunchSource &&
+            System.Windows.Controls.ItemsControl.ContainerFromElement(ProjectsList, quickLaunchSource) is System.Windows.Controls.ListBoxItem &&
+            FindAncestor<System.Windows.Controls.Button>(quickLaunchSource) is { DataContext: LaunchAction }) return;
         if (e.OriginalSource is not DependencyObject source ||
             System.Windows.Controls.ItemsControl.ContainerFromElement(ProjectsList, source) is not System.Windows.Controls.ListBoxItem item ||
             !item.IsSelected) return;
@@ -289,6 +292,27 @@ public partial class MainWindow : Window
             ShowTerminalPanel();
         }
         catch (Exception ex) { StatusText.Text = ex.Message; }
+    }
+
+    private void QuickLaunch_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { DataContext: LaunchAction action } button ||
+            FindAncestor<System.Windows.Controls.ListBoxItem>(button) is not { DataContext: ProjectConfiguration project }) return;
+        try
+        {
+            StartLaunch(project.Id, action.Id);
+            StatusText.Text = $"Launch {action.Name} started.";
+            ShowTerminalPanel();
+        }
+        catch (Exception ex) { StatusText.Text = ex.Message; }
+        e.Handled = true;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject element) where T : DependencyObject
+    {
+        for (var current = element; current is not null; current = System.Windows.Media.VisualTreeHelper.GetParent(current))
+            if (current is T ancestor) return ancestor;
+        return null;
     }
 
     private void LaunchActionButton_Loaded(object sender, RoutedEventArgs e)

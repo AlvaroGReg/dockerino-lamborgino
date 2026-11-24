@@ -45,6 +45,8 @@
                                 <TextBlock Text="Action name"/><TextBox x:Name="ActionNameBox" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Action name"/>
                                 <TextBlock Text="Color (#RRGGBB)" Margin="0,6,0,0"/><TextBox x:Name="ActionColorBox" Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Action color"/>
                                 <TextBlock Text="Description" Margin="0,6,0,0"/><TextBox x:Name="ActionDescriptionBox" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Action description"/>
+                                <CheckBox Content="Lanzado rápido (mostrar en la lista de proyectos)" IsChecked="{Binding IsQuickLaunch, UpdateSourceTrigger=PropertyChanged}"
+                                          Margin="0,6,0,0" AutomationProperties.Name="Quick launch"/>
                                 <TextBlock Text="Processes (run independently)" FontWeight="Bold" Margin="0,10,0,3"/>
                                 <ListBox x:Name="ProcessesList" DisplayMemberPath="Name" Height="65" SelectionChanged="ProcessesList_SelectionChanged" AutomationProperties.Name="Processes"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0"><Button Content="Add process" Click="AddProcess_Click" Padding="6,3"/><Button Content="Remove process" Click="RemoveProcess_Click" Padding="6,3" Margin="6,0,0,0"/></StackPanel>

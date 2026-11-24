@@ -130,6 +130,10 @@ checks; explicit design acceptance has not been separately stated.**
   uses a project-list column and a selected-project tools column; the terminal
   panel appears only after a launch or opening a new terminal, with closable
   session tabs and a final add-tab button.
+- Incremental dashboard refinement: project rows omit the directory path and
+  use compact spacing; actions can opt into quick-launch play buttons in those
+  rows. Persist the optional `isQuickLaunch` setting and expose it in the UI
+  editor and CLI JSON configuration.
 - Verify the updated UI manually and with appropriate UI tests; record the
   design decisions and implementation evidence.
 

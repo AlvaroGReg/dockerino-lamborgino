@@ -65,6 +65,54 @@ public sealed class ProjectConfigurationServiceTests : IDisposable
     }
 
     [Fact]
+    public void QuickLaunchSettingRoundTripsThroughConfigurationAndCliJson()
+    {
+        var project = ProjectConfigurationService.Create("Example", root);
+        project.Actions.Add(new LaunchAction
+        {
+            Id = Guid.NewGuid(),
+            Name = "Start",
+            Color = "#AABBCC",
+            IsQuickLaunch = true,
+            Processes = [new LaunchProcess
+            {
+                Id = Guid.NewGuid(), Name = "server", WorkingDirectory = root,
+                Steps = [new LaunchStep { Id = Guid.NewGuid(), Command = "start" }]
+            }]
+        });
+
+        Assert.Empty(service.Save(project));
+        var output = new StringWriter();
+        Assert.Equal(0, Program.Run(["get", project.Id.ToString()], output, new StringWriter(), service.StorageDirectory));
+
+        var result = JsonSerializer.Deserialize<ProjectLoadResult>(output.ToString(), ProjectConfigurationService.JsonOptions)!;
+        Assert.True(result.Project!.Actions[0].IsQuickLaunch);
+        Assert.Equal([result.Project.Actions[0]], result.Project.QuickLaunchActions);
+        Assert.Contains("\"isQuickLaunch\": true", output.ToString());
+    }
+
+    [Fact]
+    public void LegacyActionsDefaultToNotQuickLaunch()
+    {
+        var project = ProjectConfigurationService.Create("Example", root);
+        project.Actions.Add(new LaunchAction
+        {
+            Id = Guid.NewGuid(), Name = "Start", Color = "#AABBCC",
+            Processes = [new LaunchProcess
+            {
+                Id = Guid.NewGuid(), Name = "server", WorkingDirectory = root,
+                Steps = [new LaunchStep { Id = Guid.NewGuid(), Command = "start" }]
+            }]
+        });
+
+        Assert.Empty(service.Save(project));
+        var loaded = service.Get(project.Id).Project!;
+
+        Assert.False(loaded.Actions[0].IsQuickLaunch);
+        Assert.Empty(loaded.QuickLaunchActions);
+    }
+
+    [Fact]
     public void DamagedProjectDoesNotHideOthers()
     {
         var project = ProjectConfigurationService.Create("Valid", root);

@@ -124,6 +124,13 @@ when they have no explicit dependency.
 
 Validate the commands, paths, and tools required by the selected configuration. Keep output visible and show failures. Tests should exercise varied configurations and project structures.
 
+**Quick launch presentation:** each action may opt into `isQuickLaunch`. The
+dashboard then exposes a play button for that saved action in its project-list
+row; this is only a shortcut to the same configured launch and does not change
+its commands or execution semantics. The flag is optional and defaults to
+`false` for existing configurations. It is editable in the UI and through the
+CLI project JSON.
+
 ### D10. Explicit command effects
 
 **Decision:** never add an update, installation, or other command implicitly. Action labels and any configured descriptions must make their purpose and known effects clear, independently of color.
